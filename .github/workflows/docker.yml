@@ -86,9 +86,9 @@ jobs:
       run: |
         cp .env.example .env
 
-    - name: Start services with docker-compose
+    - name: Start services with docker compose
       run: |
-        docker-compose up -d
+        docker compose up -d
         sleep 30
 
     - name: Check service health
@@ -98,9 +98,9 @@ jobs:
     - name: View logs
       if: failure()
       run: |
-        docker-compose logs
+        docker compose logs
 
     - name: Stop services
       if: always()
       run: |
-        docker-compose down -v
+        docker compose down -v
