@@ -40,38 +40,38 @@ Spark Resource Optimizer is an open-source tool that helps you choose the best r
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                   Data Collection Layer                  │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐ │
-│  │ Event Logs   │  │ History API  │  │ Cloud APIs   │ │
-│  └──────────────┘  └──────────────┘  └──────────────┘ │
+│                   Data Collection Layer                 │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐   │
+│  │ Event Logs   │  │ History API  │  │ Cloud APIs   │   │
+│  └──────────────┘  └──────────────┘  └──────────────┘   │
 └────────────────────────┬────────────────────────────────┘
                          │
                          ▼
 ┌─────────────────────────────────────────────────────────┐
-│                    Storage Layer                         │
-│  ┌───────────────────────────────────────────────────┐ │
-│  │  SQLite/PostgreSQL Database                       │ │
-│  │  - Job Metadata                                    │ │
-│  │  - Performance Metrics                             │ │
-│  │  - Resource Configurations                         │ │
-│  └───────────────────────────────────────────────────┘ │
+│                    Storage Layer                        │
+│  ┌───────────────────────────────────────────────────┐  │
+│  │  SQLite/PostgreSQL Database                       │  │
+│  │  - Job Metadata                                   │  │
+│  │  - Performance Metrics                            │  │
+│  │  - Resource Configurations                        │  │
+│  └───────────────────────────────────────────────────┘  │
 └────────────────────────┬────────────────────────────────┘
                          │
                          ▼
 ┌─────────────────────────────────────────────────────────┐
-│                  Analysis & Recommendation               │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐ │
-│  │ Feature      │  │ Similarity   │  │ ML Models    │ │
-│  │ Extraction   │  │ Matching     │  │              │ │
-│  └──────────────┘  └──────────────┘  └──────────────┘ │
+│                  Analysis & Recommendation              │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐   │
+│  │ Feature      │  │ Similarity   │  │ ML Models    │   │
+│  │ Extraction   │  │ Matching     │  │              │   │
+│  └──────────────┘  └──────────────┘  └──────────────┘   │
 └────────────────────────┬────────────────────────────────┘
                          │
                          ▼
 ┌─────────────────────────────────────────────────────────┐
-│                      API Layer                           │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐ │
-│  │ REST API     │  │ CLI          │  │ Python SDK   │ │
-│  └──────────────┘  └──────────────┘  └──────────────┘ │
+│                      API Layer                          │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐   │
+│  │ REST API     │  │ CLI          │  │ Python SDK   │   │
+│  └──────────────┘  └──────────────┘  └──────────────┘   │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -97,7 +97,7 @@ Spark Resource Optimizer is an open-source tool that helps you choose the best r
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/spark-resource-optimizer.git
+git clone https://github.com/gridatek/spark-resource-optimizer.git
 cd spark-resource-optimizer
 
 # Create virtual environment

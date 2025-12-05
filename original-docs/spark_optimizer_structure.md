@@ -75,7 +75,7 @@ spark-resource-optimizer/
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/spark-resource-optimizer.git
+git clone https://github.com/gridatek/spark-resource-optimizer.git
 cd spark-resource-optimizer
 
 # Install dependencies
@@ -169,6 +169,6 @@ If you use this tool in your research or production systems, please cite:
   title = {Spark Resource Optimizer},
   author = {Your Name},
   year = {2024},
-  url = {https://github.com/yourusername/spark-resource-optimizer}
+  url = {https://github.com/gridatek/spark-resource-optimizer}
 }
 ```
