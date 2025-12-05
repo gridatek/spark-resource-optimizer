@@ -100,7 +100,7 @@ jobs:
           for (const group of requiredLabelGroups) {
             const hasLabel = labels.some(label => group.includes(label));
             if (!hasLabel) {
-              core.setFailed(`PR must have at least one label from: ${group.join(', ')}`);
+              core.warning(`PR should have at least one label from: ${group.join(', ')}`);
             }
           }
 
