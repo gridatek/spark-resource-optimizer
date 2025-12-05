@@ -1,0 +1,174 @@
+version: '3.8'
+
+services:
+  # Main API Server
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: spark-optimizer-api
+    ports:
+      - "8080:8080"
+    environment:
+      - SPARK_OPTIMIZER_DB_URL=postgresql://spark_optimizer:spark_password@db:5432/spark_optimizer
+      - SPARK_OPTIMIZER_API_HOST=0.0.0.0
+      - SPARK_OPTIMIZER_API_PORT=8080
+      - SPARK_OPTIMIZER_LOG_LEVEL=INFO
+    volumes:
+      - ./event_logs:/app/event_logs:ro
+      - ./data:/app/data
+    depends_on:
+      - db
+    restart: unless-stopped
+    networks:
+      - spark-optimizer-network
+    command: spark-optimizer serve --host 0.0.0.0 --port 8080
+
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    container_name: spark-optimizer-db
+    environment:
+      - POSTGRES_DB=spark_optimizer
+      - POSTGRES_USER=spark_optimizer
+      - POSTGRES_PASSWORD=spark_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - spark-optimizer-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U spark_optimizer"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Background Worker (for async tasks - future)
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: spark-optimizer-worker
+    environment:
+      - SPARK_OPTIMIZER_DB_URL=postgresql://spark_optimizer:spark_password@db:5432/spark_optimizer
+      - SPARK_OPTIMIZER_LOG_LEVEL=INFO
+    volumes:
+      - ./event_logs:/app/event_logs:ro
+      - ./data:/app/data
+    depends_on:
+      - db
+      - redis
+    restart: unless-stopped
+    networks:
+      - spark-optimizer-network
+    command: celery -A spark_optimizer.tasks worker --loglevel=info
+    # Note: This service is for future use when Celery tasks are implemented
+    profiles:
+      - with-worker
+
+  # Redis (for task queue - future)
+  redis:
+    image: redis:7-alpine
+    container_name: spark-optimizer-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    networks:
+      - spark-optimizer-network
+    profiles:
+      - with-worker
+
+  # Spark History Server (for testing data collection)
+  spark-history:
+    image: bitnami/spark:3.4
+    container_name: spark-history-server
+    environment:
+      - SPARK_MODE=history-server
+      - SPARK_HISTORY_OPTS=-Dspark.history.fs.logDirectory=/spark-events
+    ports:
+      - "18080:18080"
+    volumes:
+      - ./spark-events:/spark-events:ro
+    restart: unless-stopped
+    networks:
+      - spark-optimizer-network
+    profiles:
+      - with-spark
+
+  # Prometheus (for monitoring - optional)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: spark-optimizer-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    restart: unless-stopped
+    networks:
+      - spark-optimizer-network
+    profiles:
+      - with-monitoring
+
+  # Grafana (for visualization - optional)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: spark-optimizer-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    networks:
+      - spark-optimizer-network
+    profiles:
+      - with-monitoring
+
+  # pgAdmin (for database management - optional)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: spark-optimizer-pgadmin
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@sparkoptimizer.com
+      - PGADMIN_DEFAULT_PASSWORD=admin
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - db
+    restart: unless-stopped
+    networks:
+      - spark-optimizer-network
+    profiles:
+      - with-tools
+
+networks:
+  spark-optimizer-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  pgadmin_data:
+    driver: local

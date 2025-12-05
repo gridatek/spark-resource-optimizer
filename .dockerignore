@@ -1,0 +1,74 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+docs/_build/
+
+# Test
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Data
+*.db
+*.sqlite
+*.sqlite3
+spark_optimizer.db
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+docker-compose.override.yml
+.dockerignore
+Dockerfile
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+
+# Development
+.env
+.env.local
+*.bak
+*.tmp
+
+# Large files
+event_logs/
+spark-events/
+data/
+
+# Documentation
+comprehensive_docs.md
+spark_optimizer_structure.txt
