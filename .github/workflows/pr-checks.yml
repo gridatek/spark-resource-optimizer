@@ -136,6 +136,6 @@ jobs:
           const branch = context.payload.pull_request.head.ref;
           const validPrefixes = ['feature/', 'fix/', 'docs/', 'refactor/', 'test/', 'chore/'];
 
-          if (!validPrefixes.some(prefix => branch.startsWith(prefix)) && branch !== 'develop') {
+          if (!validPrefixes.some(prefix => branch.startsWith(prefix))) {
             core.warning(`Branch name "${branch}" doesn't follow naming convention: ${validPrefixes.join(', ')}`);
           }
