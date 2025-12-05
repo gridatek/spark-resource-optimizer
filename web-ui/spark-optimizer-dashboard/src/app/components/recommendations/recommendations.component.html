@@ -1,0 +1,184 @@
+<div class="recommendations-container">
+  <header class="page-header">
+    <h1>Get Resource Recommendations</h1>
+    <p class="subtitle">Get optimal Spark configuration recommendations for your job</p>
+  </header>
+
+  <div class="content-grid">
+    <!-- Request Form -->
+    <div class="form-card">
+      <h2>Job Requirements</h2>
+
+      <form (ngSubmit)="getRecommendation()" #recForm="ngForm">
+        <div class="form-group">
+          <label for="inputSize">Input Data Size (GB) *</label>
+          <input
+            type="number"
+            id="inputSize"
+            name="inputSize"
+            [(ngModel)]="request.input_size_gb"
+            min="0.1"
+            step="0.1"
+            required
+            class="form-input"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="jobType">Job Type</label>
+          <select
+            id="jobType"
+            name="jobType"
+            [(ngModel)]="request.job_type"
+            class="form-select"
+          >
+            <option [value]="undefined">-- Select Type --</option>
+            <option *ngFor="let type of jobTypes" [value]="type">
+              {{ type | uppercase }}
+            </option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="appName">Application Name (optional)</label>
+          <input
+            type="text"
+            id="appName"
+            name="appName"
+            [(ngModel)]="request.app_name"
+            placeholder="my-spark-job"
+            class="form-input"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="method">Recommendation Method</label>
+          <select
+            id="method"
+            name="method"
+            [(ngModel)]="request.method"
+            class="form-select"
+          >
+            <option [value]="undefined">-- Auto Select --</option>
+            <option *ngFor="let method of methods" [value]="method">
+              {{ method | titlecase }}
+            </option>
+          </select>
+        </div>
+
+        <div class="form-actions">
+          <button
+            type="submit"
+            [disabled]="loading || !recForm.form.valid"
+            class="btn btn-primary"
+          >
+            {{ loading ? 'Getting Recommendation...' : 'Get Recommendation' }}
+          </button>
+          <button
+            type="button"
+            (click)="reset()"
+            class="btn btn-secondary"
+          >
+            Reset
+          </button>
+        </div>
+
+        <div *ngIf="error" class="error-message">
+          {{ error }}
+        </div>
+      </form>
+    </div>
+
+    <!-- Recommendation Result -->
+    <div class="result-card" *ngIf="recommendation">
+      <h2>Recommended Configuration</h2>
+
+      <div class="confidence-badge" [ngClass]="getConfidenceColor(recommendation.confidence)">
+        <span class="confidence-label">Confidence:</span>
+        <span class="confidence-value">{{ (recommendation.confidence * 100).toFixed(0) }}%</span>
+      </div>
+
+      <div class="config-grid">
+        <div class="config-item">
+          <div class="config-icon">🔧</div>
+          <div class="config-content">
+            <h4>Executor Cores</h4>
+            <p class="config-value">{{ recommendation.configuration.executor_cores }}</p>
+          </div>
+        </div>
+
+        <div class="config-item">
+          <div class="config-icon">💾</div>
+          <div class="config-content">
+            <h4>Executor Memory</h4>
+            <p class="config-value">{{ formatMemory(recommendation.configuration.executor_memory_mb) }}</p>
+          </div>
+        </div>
+
+        <div class="config-item">
+          <div class="config-icon">⚡</div>
+          <div class="config-content">
+            <h4>Number of Executors</h4>
+            <p class="config-value">{{ recommendation.configuration.num_executors }}</p>
+          </div>
+        </div>
+
+        <div class="config-item">
+          <div class="config-icon">🚗</div>
+          <div class="config-content">
+            <h4>Driver Memory</h4>
+            <p class="config-value">{{ formatMemory(recommendation.configuration.driver_memory_mb) }}</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Predicted Metrics -->
+      <div *ngIf="recommendation.predicted_metrics" class="predictions-section">
+        <h3>Predicted Performance</h3>
+        <div class="predictions-grid">
+          <div class="prediction-item">
+            <span class="prediction-label">Duration:</span>
+            <span class="prediction-value">
+              ~{{ recommendation.predicted_metrics.duration_minutes }} minutes
+            </span>
+          </div>
+          <div class="prediction-item">
+            <span class="prediction-label">Estimated Cost:</span>
+            <span class="prediction-value">
+              ${{ recommendation.predicted_metrics.cost_usd.toFixed(2) }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Metadata -->
+      <div class="metadata-section">
+        <div class="metadata-item">
+          <strong>Method:</strong> {{ recommendation.method | titlecase }}
+        </div>
+        <div *ngIf="recommendation.metadata?.similar_jobs" class="metadata-item">
+          <strong>Based on:</strong> {{ recommendation.metadata.similar_jobs.length }} similar jobs
+        </div>
+      </div>
+
+      <!-- Spark Configuration -->
+      <div class="spark-config-section">
+        <h3>Spark Configuration</h3>
+        <div class="code-block">
+          <pre><code>spark-submit \
+  --num-executors {{ recommendation.configuration.num_executors }} \
+  --executor-cores {{ recommendation.configuration.executor_cores }} \
+  --executor-memory {{ formatMemory(recommendation.configuration.executor_memory_mb) }} \
+  --driver-memory {{ formatMemory(recommendation.configuration.driver_memory_mb) }} \
+  your-spark-app.jar</code></pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading State -->
+    <div class="result-card loading-state" *ngIf="loading">
+      <div class="spinner"></div>
+      <p>Analyzing historical data and generating recommendations...</p>
+    </div>
+  </div>
+</div>
