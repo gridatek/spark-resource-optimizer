@@ -8,10 +8,10 @@ The Spark Resource Optimizer uses GitHub Actions for continuous integration and 
 
 ### 1. Tests (`test.yml`)
 
-**Triggers**: Push to main/develop, Pull requests
+**Triggers**: Push to main, Pull requests
 
 **Jobs**:
-- **test**: Runs tests on multiple OS (Ubuntu, Windows, macOS) and Python versions (3.8-3.11)
+- **test**: Runs tests on multiple OS (Ubuntu, Windows, macOS) with Python 3.13
 - **test-integration**: Runs integration tests with PostgreSQL
 - **test-docker**: Builds and tests Docker image
 
@@ -27,7 +27,7 @@ The Spark Resource Optimizer uses GitHub Actions for continuous integration and 
 
 ### 2. Lint and Code Quality (`lint.yml`)
 
-**Triggers**: Push to main/develop, Pull requests
+**Triggers**: Push to main, Pull requests
 
 **Jobs**:
 - **lint**: Runs flake8 for code linting
@@ -93,7 +93,7 @@ The Spark Resource Optimizer uses GitHub Actions for continuous integration and 
 
 ### 5. CodeQL Analysis (`codeql.yml`)
 
-**Triggers**: Push to main/develop, Pull requests, Weekly schedule
+**Triggers**: Push to main, Pull requests, Weekly schedule
 
 **What it does**:
 - Scans code for security vulnerabilities
@@ -151,12 +151,6 @@ Configure these in GitHub repository settings:
 - Requires status checks to pass
 - No direct commits allowed
 - Auto-deploys to production on merge
-
-### Develop Branch (`develop`)
-- Integration branch
-- All feature branches merge here first
-- Runs full test suite
-- Optional pre-production deployment
 
 ### Feature Branches
 Format: `feature/description`, `fix/description`, `docs/description`
