@@ -55,13 +55,13 @@ The Spark Resource Optimizer uses GitHub Actions for continuous integration and 
 
 **Jobs**:
 - **build-and-push**: Builds and pushes Docker images to GHCR
-- **build-docker-compose**: Tests docker-compose setup
+- **build-docker-compose**: Tests docker compose setup
 
 **What it does**:
 - Builds Docker images for multiple platforms (amd64, arm64)
 - Pushes to GitHub Container Registry
 - Runs Trivy security scan
-- Tests docker-compose deployment
+- Tests docker compose deployment
 
 **Image Tags**:
 - `latest`: Latest main branch
@@ -247,8 +247,8 @@ docker build -t spark-optimizer:local .
 # Run container
 docker run -p 8080:8080 spark-optimizer:local
 
-# Test with docker-compose
-docker-compose up -d
+# Test with docker compose
+docker compose up -d
 ```
 
 ## Creating a Release
