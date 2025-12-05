@@ -115,11 +115,30 @@ pytest --cov=spark_optimizer
 
 ## Contributing
 
-We welcome contributions! Please feel free to submit issues and pull requests.
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Community
+
+- GitHub Issues: Bug reports and feature requests
+- Discussions: Questions and general discussion
+- Slack: [Join our community](link-to-slack)
+
+## Citation
+
+If you use this tool in your research or production systems, please cite:
+
+```bibtex
+@software{spark_resource_optimizer,
+  title = {Spark Resource Optimizer},
+  author = {Gridatek},
+  year = {2024},
+  url = {https://github.com/gridatek/spark-resource-optimizer}
+}
+```
 
 ## Roadmap
 

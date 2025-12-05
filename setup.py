@@ -9,8 +9,8 @@ with open("requirements.txt", "r", encoding="utf-8") as fh:
 setup(
     name="spark-resource-optimizer",
     version="0.1.0",
-    author="Your Name",
-    author_email="your.email@example.com",
+    author="Gridatek",
+    author_email="info@gridatek.com",
     description="An open-source tool that analyzes historical Spark job runs to recommend optimal resource configurations",
     long_description=long_description,
     long_description_content_type="text/markdown",
