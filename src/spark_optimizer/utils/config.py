@@ -61,14 +61,16 @@ class Config:
 
         # API defaults
         self._config.setdefault("api", {})
-        self._config["api"].setdefault("host", "0.0.0.0")
+        self._config["api"].setdefault("host", "0.0.0.0")  # nosec B104
         self._config["api"].setdefault("port", 8080)
         self._config["api"].setdefault("debug", False)
 
         # Logging defaults
         self._config.setdefault("logging", {})
         self._config["logging"].setdefault("level", "INFO")
-        self._config["logging"].setdefault("format", "%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+        self._config["logging"].setdefault(
+            "format", "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        )
 
         # Recommender defaults
         self._config.setdefault("recommender", {})
@@ -90,7 +92,7 @@ class Config:
             Configuration value
         """
         keys = key.split(".")
-        value = self._config
+        value: Any = self._config
 
         for k in keys:
             if isinstance(value, dict):

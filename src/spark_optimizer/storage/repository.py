@@ -76,7 +76,9 @@ class SparkApplicationRepository:
         query = self.session.query(SparkApplication)
 
         if "app_name_pattern" in criteria:
-            query = query.filter(SparkApplication.app_name.like(f"%{criteria['app_name_pattern']}%"))
+            query = query.filter(
+                SparkApplication.app_name.like(f"%{criteria['app_name_pattern']}%")
+            )
 
         return query.limit(limit).all()
 

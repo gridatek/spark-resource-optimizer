@@ -41,9 +41,9 @@ class FeatureExtractor:
         """
         # TODO: Implement size feature extraction
         return {
-            "input_size_gb": job_data.get("input_bytes", 0) / (1024 ** 3),
-            "output_size_gb": job_data.get("output_bytes", 0) / (1024 ** 3),
-            "shuffle_size_gb": job_data.get("shuffle_read_bytes", 0) / (1024 ** 3),
+            "input_size_gb": job_data.get("input_bytes", 0) / (1024**3),
+            "output_size_gb": job_data.get("output_bytes", 0) / (1024**3),
+            "shuffle_size_gb": job_data.get("shuffle_read_bytes", 0) / (1024**3),
         }
 
     def _extract_resource_features(self, job_data: Dict) -> Dict:
@@ -57,8 +57,11 @@ class FeatureExtractor:
         """
         # TODO: Implement resource feature extraction
         return {
-            "total_cores": job_data.get("num_executors", 0) * job_data.get("executor_cores", 0),
-            "total_memory_gb": job_data.get("num_executors", 0) * job_data.get("executor_memory_mb", 0) / 1024,
+            "total_cores": job_data.get("num_executors", 0)
+            * job_data.get("executor_cores", 0),
+            "total_memory_gb": job_data.get("num_executors", 0)
+            * job_data.get("executor_memory_mb", 0)
+            / 1024,
             "executor_cores": job_data.get("executor_cores", 0),
         }
 
@@ -75,7 +78,8 @@ class FeatureExtractor:
         return {
             "num_stages": job_data.get("total_stages", 0),
             "num_tasks": job_data.get("total_tasks", 0),
-            "avg_tasks_per_stage": job_data.get("total_tasks", 0) / max(job_data.get("total_stages", 1), 1),
+            "avg_tasks_per_stage": job_data.get("total_tasks", 0)
+            / max(job_data.get("total_stages", 1), 1),
         }
 
     def _extract_io_features(self, job_data: Dict) -> Dict:
@@ -93,7 +97,8 @@ class FeatureExtractor:
 
         return {
             "io_ratio": output_bytes / max(input_bytes, 1),
-            "shuffle_to_input_ratio": job_data.get("shuffle_read_bytes", 0) / max(input_bytes, 1),
+            "shuffle_to_input_ratio": job_data.get("shuffle_read_bytes", 0)
+            / max(input_bytes, 1),
         }
 
     def create_feature_matrix(self, jobs: List[Dict]) -> np.ndarray:

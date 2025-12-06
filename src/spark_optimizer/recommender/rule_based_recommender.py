@@ -16,11 +16,22 @@ class RuleBasedRecommender(BaseRecommender):
         super().__init__(config)
         self.rules = self._initialize_rules()
 
-    def recommend(self, job_requirements: Dict) -> Dict:
+    def recommend(
+        self,
+        input_size_bytes: int,
+        job_type: Optional[str] = None,
+        sla_minutes: Optional[int] = None,
+        budget_dollars: Optional[float] = None,
+        priority: str = "balanced",
+    ) -> Dict:
         """Generate rule-based recommendations.
 
         Args:
-            job_requirements: Job requirements dictionary
+            input_size_bytes: Expected input data size in bytes
+            job_type: Type of job (e.g., etl, ml, streaming)
+            sla_minutes: Maximum acceptable duration in minutes
+            budget_dollars: Maximum acceptable cost in dollars
+            priority: Optimization priority (performance, cost, or balanced)
 
         Returns:
             Recommendation dictionary
@@ -31,8 +42,8 @@ class RuleBasedRecommender(BaseRecommender):
         # 3. Apply anti-pattern detection
         # 4. Combine rules with weights
 
-        input_gb = job_requirements.get("input_size_gb", 10)
-        job_type = job_requirements.get("job_type", "general")
+        input_gb = input_size_bytes / (1024**3)
+        job_type = job_type or "general"
 
         # Apply size-based rules
         size_rec = self._apply_size_rules(input_gb)
@@ -49,7 +60,10 @@ class RuleBasedRecommender(BaseRecommender):
             num_executors=final_rec["num_executors"],
             driver_memory_mb=final_rec["driver_memory_mb"],
             confidence=0.75,
-            metadata={"method": "rule_based", "rules_applied": final_rec.get("rules", [])},
+            metadata={
+                "method": "rule_based",
+                "rules_applied": final_rec.get("rules", []),
+            },
         )
 
     def train(self, historical_jobs: List[Dict]):
@@ -70,9 +84,24 @@ class RuleBasedRecommender(BaseRecommender):
         return {
             "size_rules": {
                 "small": {"max_gb": 10, "executors": 5, "cores": 2, "memory_mb": 4096},
-                "medium": {"max_gb": 100, "executors": 10, "cores": 4, "memory_mb": 8192},
-                "large": {"max_gb": 1000, "executors": 20, "cores": 4, "memory_mb": 16384},
-                "xlarge": {"max_gb": float("inf"), "executors": 50, "cores": 4, "memory_mb": 16384},
+                "medium": {
+                    "max_gb": 100,
+                    "executors": 10,
+                    "cores": 4,
+                    "memory_mb": 8192,
+                },
+                "large": {
+                    "max_gb": 1000,
+                    "executors": 20,
+                    "cores": 4,
+                    "memory_mb": 16384,
+                },
+                "xlarge": {
+                    "max_gb": float("inf"),
+                    "executors": 50,
+                    "cores": 4,
+                    "memory_mb": 16384,
+                },
             },
             "type_rules": {
                 "etl": {"memory_multiplier": 1.0, "executor_multiplier": 1.0},
@@ -121,7 +150,9 @@ class RuleBasedRecommender(BaseRecommender):
             Configuration adjustments
         """
         # TODO: Implement type-based rules
-        type_rule = self.rules["type_rules"].get(job_type, {"memory_multiplier": 1.0, "executor_multiplier": 1.0})
+        type_rule = self.rules["type_rules"].get(
+            job_type, {"memory_multiplier": 1.0, "executor_multiplier": 1.0}
+        )
 
         return {
             "memory_multiplier": type_rule["memory_multiplier"],
@@ -153,8 +184,14 @@ class RuleBasedRecommender(BaseRecommender):
         # Apply multipliers from second recommendation if present
         if len(recommendations) > 1:
             multipliers = recommendations[1]
-            base["executor_memory_mb"] = int(base.get("executor_memory_mb", 8192) * multipliers.get("memory_multiplier", 1.0))
-            base["num_executors"] = int(base.get("num_executors", 10) * multipliers.get("executor_multiplier", 1.0))
+            base["executor_memory_mb"] = int(
+                base.get("executor_memory_mb", 8192)
+                * multipliers.get("memory_multiplier", 1.0)
+            )
+            base["num_executors"] = int(
+                base.get("num_executors", 10)
+                * multipliers.get("executor_multiplier", 1.0)
+            )
 
         base["rules"] = rules_applied
         return base

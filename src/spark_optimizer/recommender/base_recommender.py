@@ -16,12 +16,22 @@ class BaseRecommender(ABC):
         self.config = config or {}
 
     @abstractmethod
-    def recommend(self, job_requirements: Dict) -> Dict:
+    def recommend(
+        self,
+        input_size_bytes: int,
+        job_type: Optional[str] = None,
+        sla_minutes: Optional[int] = None,
+        budget_dollars: Optional[float] = None,
+        priority: str = "balanced",
+    ) -> Dict:
         """Generate resource recommendations for a job.
 
         Args:
-            job_requirements: Dictionary containing job requirements
-                (e.g., input size, job type, etc.)
+            input_size_bytes: Expected input data size in bytes
+            job_type: Type of job (e.g., etl, ml, streaming)
+            sla_minutes: Maximum acceptable duration in minutes
+            budget_dollars: Maximum acceptable cost in dollars
+            priority: Optimization priority (performance, cost, or balanced)
 
         Returns:
             Dictionary containing recommended configuration

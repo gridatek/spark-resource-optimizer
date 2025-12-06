@@ -46,7 +46,7 @@ jobs:
           type=semver,pattern={{version}}
           type=semver,pattern={{major}}.{{minor}}
           type=semver,pattern={{major}}
-          type=sha,prefix={{branch}}-
+          type=sha
           type=raw,value=latest,enable={{is_default_branch}}
 
     - name: Build and push Docker image
@@ -89,16 +89,39 @@ jobs:
     - name: Start services with docker compose
       run: |
         docker compose up -d
-        sleep 30
 
-    - name: Check service health
+    - name: Wait for database to be ready
       run: |
-        curl -f http://localhost:8080/health || exit 1
+        echo "Waiting for database..."
+        timeout 30 sh -c 'until docker compose exec -T db pg_isready -U spark_optimizer; do sleep 2; done'
 
-    - name: View logs
+    - name: View service status
+      run: |
+        docker compose ps
+
+    - name: Wait for API service
+      run: |
+        echo "Waiting for API service to start..."
+        for i in {1..30}; do
+          if curl -f http://localhost:8080/health 2>/dev/null; then
+            echo "API is healthy!"
+            exit 0
+          fi
+          echo "Waiting... ($i/30)"
+          sleep 2
+        done
+        echo "API failed to become healthy"
+        exit 1
+
+    - name: View logs on failure
       if: failure()
       run: |
-        docker compose logs
+        echo "=== Docker Compose Status ==="
+        docker compose ps
+        echo "=== API Logs ==="
+        docker compose logs api
+        echo "=== Database Logs ==="
+        docker compose logs db
 
     - name: Stop services
       if: always()

@@ -1,13 +1,13 @@
 """Job similarity calculation for matching historical jobs."""
 
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 import numpy as np
 
 
 class JobSimilarityCalculator:
     """Calculate similarity between Spark jobs."""
 
-    def __init__(self, weights: Dict[str, float] = None):
+    def __init__(self, weights: Optional[Dict[str, float]] = None):
         """Initialize similarity calculator.
 
         Args:
@@ -126,5 +126,5 @@ class JobSimilarityCalculator:
         # - Normalize features
         # - Handle missing values
         # - Create fixed-length vector
-        features = []
+        features: List[float] = []
         return np.array(features)

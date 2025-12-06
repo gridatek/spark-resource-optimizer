@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # Main API Server
   api:
@@ -18,11 +16,18 @@ services:
       - ./event_logs:/app/event_logs:ro
       - ./data:/app/data
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - spark-optimizer-network
     command: spark-optimizer serve --host 0.0.0.0 --port 8080
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   # PostgreSQL Database
   db:

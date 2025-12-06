@@ -6,7 +6,7 @@ from sqlalchemy.orm import relationship
 from .database import Base
 
 
-class SparkApplication(Base):
+class SparkApplication(Base):  # type: ignore[misc,valid-type]
     """Model for Spark application metadata."""
 
     __tablename__ = "spark_applications"
@@ -43,6 +43,15 @@ class SparkApplication(Base):
     cpu_time_ms = Column(Integer)
     memory_spilled_bytes = Column(Integer)
     disk_spilled_bytes = Column(Integer)
+    executor_run_time_ms = Column(Integer)
+    executor_cpu_time_ms = Column(Integer)
+    jvm_gc_time_ms = Column(Integer)
+    peak_memory_usage = Column(Integer)
+
+    # Cost estimation
+    cluster_type = Column(String)
+    instance_type = Column(String)
+    estimated_cost = Column(Float)
 
     # Additional metadata
     tags = Column(JSON)
@@ -52,16 +61,20 @@ class SparkApplication(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
-    stages = relationship("SparkStage", back_populates="application", cascade="all, delete-orphan")
+    stages = relationship(
+        "SparkStage", back_populates="application", cascade="all, delete-orphan"
+    )
 
 
-class SparkStage(Base):
+class SparkStage(Base):  # type: ignore[misc,valid-type]
     """Model for Spark stage metrics."""
 
     __tablename__ = "spark_stages"
 
     id = Column(Integer, primary_key=True, index=True)
-    application_id = Column(Integer, ForeignKey("spark_applications.id"), nullable=False)
+    application_id = Column(
+        Integer, ForeignKey("spark_applications.id"), nullable=False
+    )
     stage_id = Column(Integer, nullable=False)
     stage_name = Column(String)
 
@@ -88,7 +101,7 @@ class SparkStage(Base):
     application = relationship("SparkApplication", back_populates="stages")
 
 
-class JobRecommendation(Base):
+class JobRecommendation(Base):  # type: ignore[misc,valid-type]
     """Model for storing job recommendations."""
 
     __tablename__ = "job_recommendations"

@@ -37,7 +37,7 @@ ENV PATH="/opt/venv/bin:$PATH"
 
 # Copy application code
 COPY src/ ./src/
-COPY setup.py README.md LICENSE ./
+COPY setup.py README.md LICENSE requirements.txt ./
 COPY scripts/ ./scripts/
 COPY examples/ ./examples/
 

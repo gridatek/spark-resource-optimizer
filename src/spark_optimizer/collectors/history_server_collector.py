@@ -16,7 +16,7 @@ class HistoryServerCollector(BaseCollector):
             config: Optional configuration dictionary
         """
         super().__init__(config)
-        self.history_server_url = history_server_url.rstrip('/')
+        self.history_server_url = history_server_url.rstrip("/")
 
     def collect(self) -> List[Dict]:
         """Collect job data from History Server.
@@ -39,7 +39,9 @@ class HistoryServerCollector(BaseCollector):
         """
         # TODO: Check if History Server is accessible
         try:
-            response = requests.get(f"{self.history_server_url}/api/v1/applications", timeout=5)
+            response = requests.get(
+                f"{self.history_server_url}/api/v1/applications", timeout=5
+            )
             return response.status_code == 200
         except Exception:
             return False
@@ -51,7 +53,7 @@ class HistoryServerCollector(BaseCollector):
             List of application metadata
         """
         # TODO: Implement
-        pass
+        return []
 
     def _fetch_application_details(self, app_id: str) -> Dict:
         """Fetch detailed metrics for a specific application.
@@ -63,4 +65,4 @@ class HistoryServerCollector(BaseCollector):
             Dictionary containing application details
         """
         # TODO: Implement
-        pass
+        return {}
