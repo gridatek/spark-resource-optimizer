@@ -90,19 +90,38 @@ jobs:
       run: |
         docker compose up -d
 
-    - name: Wait for services to be healthy
+    - name: Wait for database to be ready
       run: |
-        echo "Waiting for API service to be healthy..."
-        timeout 60 sh -c 'until docker compose ps api | grep -q "healthy"; do echo "Waiting..."; sleep 2; done'
+        echo "Waiting for database..."
+        timeout 30 sh -c 'until docker compose exec -T db pg_isready -U spark_optimizer; do sleep 2; done'
 
-    - name: Check service health
+    - name: View service status
       run: |
-        curl -f http://localhost:8080/health || exit 1
+        docker compose ps
 
-    - name: View logs
+    - name: Wait for API service
+      run: |
+        echo "Waiting for API service to start..."
+        for i in {1..30}; do
+          if curl -f http://localhost:8080/health 2>/dev/null; then
+            echo "API is healthy!"
+            exit 0
+          fi
+          echo "Waiting... ($i/30)"
+          sleep 2
+        done
+        echo "API failed to become healthy"
+        exit 1
+
+    - name: View logs on failure
       if: failure()
       run: |
-        docker compose logs
+        echo "=== Docker Compose Status ==="
+        docker compose ps
+        echo "=== API Logs ==="
+        docker compose logs api
+        echo "=== Database Logs ==="
+        docker compose logs db
 
     - name: Stop services
       if: always()
