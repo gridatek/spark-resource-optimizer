@@ -347,8 +347,8 @@ def stats(db_url: str):
 
 @cli.command()
 @click.option(
-    "--host", default="0.0.0.0", help="Host to bind the server to"
-)  # nosec B104
+    "--host", default="0.0.0.0", help="Host to bind the server to"  # nosec B104
+)
 @click.option("--port", default=8080, type=int, help="Port to bind the server to")
 @click.option("--debug", is_flag=True, help="Enable debug mode")
 @click.option(
