@@ -421,7 +421,7 @@ def get_stats():
         return jsonify({"error": str(e)}), 500
 
 
-def run_server(host="0.0.0.0", port=8080, debug=False):
+def run_server(host="0.0.0.0", port=8080, debug=False):  # nosec B104
     """Run the Flask server"""
     logger.info(f"Starting Spark Resource Optimizer API on {host}:{port}")
     app.run(host=host, port=port, debug=debug)

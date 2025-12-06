@@ -48,7 +48,7 @@ class MetricsCollector(BaseCollector):
             Query results
         """
         # TODO: Implement Prometheus integration
-        pass
+        return {}
 
     def _aggregate_metrics(self, raw_metrics: List[Dict]) -> Dict:
         """Aggregate raw metrics into job-level statistics.
@@ -60,4 +60,4 @@ class MetricsCollector(BaseCollector):
             Aggregated metrics dictionary
         """
         # TODO: Implement aggregation logic
-        pass
+        return {}

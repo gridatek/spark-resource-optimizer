@@ -14,7 +14,7 @@ class SimilarityRecommender(BaseRecommender):
             config: Optional configuration dictionary
         """
         super().__init__(config)
-        self.historical_jobs = []
+        self.historical_jobs: List[Dict] = []
         self.min_similarity_threshold = (
             config.get("min_similarity", 0.7) if config else 0.7
         )

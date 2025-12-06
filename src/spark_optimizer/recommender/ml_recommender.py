@@ -1,6 +1,6 @@
 """Machine learning-based recommender."""
 
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 import numpy as np
 from .base_recommender import BaseRecommender
 
@@ -15,7 +15,7 @@ class MLRecommender(BaseRecommender):
             config: Optional configuration dictionary
         """
         super().__init__(config)
-        self.models = {}
+        self.models: Dict[str, Any] = {}
         self.is_trained = False
 
     def recommend(self, job_requirements: Dict) -> Dict:

@@ -256,7 +256,10 @@ if __name__ == "__main__":
 
     for job_metrics in collector.collect_all():
         print(f"Job: {job_metrics.app_name}")
-        print(f"Duration: {job_metrics.duration_ms / 1000:.2f}s")
+        duration_sec = (
+            (job_metrics.duration_ms / 1000) if job_metrics.duration_ms else 0
+        )
+        print(f"Duration: {duration_sec:.2f}s")
         print(f"Executors: {job_metrics.num_executors}")
         print(f"Input: {job_metrics.input_bytes / (1024**3):.2f} GB")
         print(f"Shuffle: {job_metrics.shuffle_write_bytes / (1024**3):.2f} GB")

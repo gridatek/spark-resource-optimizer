@@ -53,7 +53,7 @@ class HistoryServerCollector(BaseCollector):
             List of application metadata
         """
         # TODO: Implement
-        pass
+        return []
 
     def _fetch_application_details(self, app_id: str) -> Dict:
         """Fetch detailed metrics for a specific application.
@@ -65,4 +65,4 @@ class HistoryServerCollector(BaseCollector):
             Dictionary containing application details
         """
         # TODO: Implement
-        pass
+        return {}
