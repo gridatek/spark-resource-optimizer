@@ -88,11 +88,16 @@ def collect_job_data():
             return jsonify({"error": "Missing required parameter: source_type"}), 400
 
         # Placeholder response
-        return jsonify({
-            "status": "success",
-            "jobs_collected": 0,
-            "message": "Collection not yet implemented"
-        }), 200
+        return (
+            jsonify(
+                {
+                    "status": "success",
+                    "jobs_collected": 0,
+                    "message": "Collection not yet implemented",
+                }
+            ),
+            200,
+        )
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -122,12 +127,7 @@ def list_jobs():
         offset = request.args.get("offset", 0, type=int)
 
         # Placeholder response
-        return jsonify({
-            "jobs": [],
-            "total": 0,
-            "limit": limit,
-            "offset": offset
-        }), 200
+        return jsonify({"jobs": [], "total": 0, "limit": limit, "offset": offset}), 200
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -150,14 +150,19 @@ def get_job_details(app_id: str):
 
     try:
         # Placeholder response
-        return jsonify({
-            "app_id": app_id,
-            "app_name": "example_job",
-            "status": "completed",
-            "duration_ms": 120000,
-            "configuration": {},
-            "metrics": {}
-        }), 200
+        return (
+            jsonify(
+                {
+                    "app_id": app_id,
+                    "app_name": "example_job",
+                    "status": "completed",
+                    "duration_ms": 120000,
+                    "configuration": {},
+                    "metrics": {},
+                }
+            ),
+            200,
+        )
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -180,19 +185,20 @@ def analyze_job(app_id: str):
 
     try:
         # Placeholder response
-        return jsonify({
-            "app_id": app_id,
-            "analysis": {
-                "bottlenecks": [],
-                "issues": [],
-                "efficiency": {
-                    "cpu": 0.0,
-                    "memory": 0.0,
-                    "io": 0.0
+        return (
+            jsonify(
+                {
+                    "app_id": app_id,
+                    "analysis": {
+                        "bottlenecks": [],
+                        "issues": [],
+                        "efficiency": {"cpu": 0.0, "memory": 0.0, "io": 0.0},
+                    },
+                    "suggestions": [],
                 }
-            },
-            "suggestions": []
-        }), 200
+            ),
+            200,
+        )
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -221,13 +227,13 @@ def submit_feedback():
         data = request.get_json()
 
         if not data or "recommendation_id" not in data:
-            return jsonify({"error": "Missing required parameter: recommendation_id"}), 400
+            return (
+                jsonify({"error": "Missing required parameter: recommendation_id"}),
+                400,
+            )
 
         # Placeholder response
-        return jsonify({
-            "status": "success",
-            "message": "Feedback recorded"
-        }), 200
+        return jsonify({"status": "success", "message": "Feedback recorded"}), 200
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500

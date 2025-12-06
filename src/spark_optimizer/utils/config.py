@@ -68,7 +68,9 @@ class Config:
         # Logging defaults
         self._config.setdefault("logging", {})
         self._config["logging"].setdefault("level", "INFO")
-        self._config["logging"].setdefault("format", "%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+        self._config["logging"].setdefault(
+            "format", "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        )
 
         # Recommender defaults
         self._config.setdefault("recommender", {})

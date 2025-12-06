@@ -17,8 +17,8 @@ def sample_job_data():
         "executor_cores": 4,
         "executor_memory_mb": 8192,
         "num_executors": 10,
-        "input_bytes": 10 * 1024 ** 3,  # 10 GB
-        "output_bytes": 5 * 1024 ** 3,  # 5 GB
+        "input_bytes": 10 * 1024**3,  # 10 GB
+        "output_bytes": 5 * 1024**3,  # 5 GB
         "total_stages": 5,
         "total_tasks": 100,
     }
@@ -53,7 +53,7 @@ def sample_historical_jobs():
             "executor_cores": 4,
             "executor_memory_mb": 8192,
             "num_executors": 10,
-            "input_bytes": (10 + i) * 1024 ** 3,
+            "input_bytes": (10 + i) * 1024**3,
         }
         for i in range(10)
     ]

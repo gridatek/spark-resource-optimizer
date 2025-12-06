@@ -19,7 +19,9 @@ class Database:
             connection_string: SQLAlchemy connection string
         """
         self.engine = create_engine(connection_string)
-        self.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
+        self.SessionLocal = sessionmaker(
+            autocommit=False, autoflush=False, bind=self.engine
+        )
 
     def create_tables(self):
         """Create all database tables."""

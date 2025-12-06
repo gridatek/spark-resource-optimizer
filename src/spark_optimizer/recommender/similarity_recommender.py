@@ -15,7 +15,9 @@ class SimilarityRecommender(BaseRecommender):
         """
         super().__init__(config)
         self.historical_jobs = []
-        self.min_similarity_threshold = config.get("min_similarity", 0.7) if config else 0.7
+        self.min_similarity_threshold = (
+            config.get("min_similarity", 0.7) if config else 0.7
+        )
 
     def recommend(self, job_requirements: Dict) -> Dict:
         """Generate recommendations based on similar jobs.

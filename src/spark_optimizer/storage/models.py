@@ -52,7 +52,9 @@ class SparkApplication(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
-    stages = relationship("SparkStage", back_populates="application", cascade="all, delete-orphan")
+    stages = relationship(
+        "SparkStage", back_populates="application", cascade="all, delete-orphan"
+    )
 
 
 class SparkStage(Base):
@@ -61,7 +63,9 @@ class SparkStage(Base):
     __tablename__ = "spark_stages"
 
     id = Column(Integer, primary_key=True, index=True)
-    application_id = Column(Integer, ForeignKey("spark_applications.id"), nullable=False)
+    application_id = Column(
+        Integer, ForeignKey("spark_applications.id"), nullable=False
+    )
     stage_id = Column(Integer, nullable=False)
     stage_name = Column(String)
 
