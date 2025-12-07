@@ -11,6 +11,7 @@ import logging
 from spark_optimizer.storage.database import Database
 from spark_optimizer.recommender.similarity_recommender import SimilarityRecommender
 from spark_optimizer.recommender.rule_based_recommender import RuleBasedRecommender
+from spark_optimizer.collectors.history_server_collector import HistoryServerCollector
 from spark_optimizer.storage.models import SparkApplication
 
 # Configure logging
@@ -323,6 +324,108 @@ def analyze_job(app_id: str):
 
     except Exception as e:
         logger.error(f"Error analyzing job: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/v1/collect", methods=["POST"])
+def collect_from_history_server():
+    """Collect jobs from Spark History Server and store in database
+
+    Request body:
+    {
+        "history_server_url": "http://localhost:18080",
+        "max_apps": 100,  // optional, default 100
+        "status": "completed",  // optional, default "completed"
+        "min_date": "2024-01-01T00:00:00"  // optional, ISO format
+    }
+
+    Returns:
+    {
+        "success": true,
+        "collected": 42,
+        "failed": 2,
+        "skipped": 5,
+        "message": "Successfully collected 42 jobs"
+    }
+    """
+    try:
+        db, _, _ = _ensure_initialized()
+
+        data = request.get_json()
+
+        # Validate required fields
+        if not data or "history_server_url" not in data:
+            return jsonify({
+                "error": "Missing required field: history_server_url"
+            }), 400
+
+        history_server_url = data["history_server_url"]
+
+        # Optional configuration
+        config = {
+            "max_apps": data.get("max_apps", 100),
+            "status": data.get("status", "completed"),
+        }
+
+        if "min_date" in data:
+            config["min_date"] = data["min_date"]
+
+        # Initialize collector
+        collector = HistoryServerCollector(history_server_url, config=config)
+
+        # Validate connectivity
+        if not collector.validate_config():
+            return jsonify({
+                "error": f"Cannot connect to History Server at {history_server_url}",
+                "message": "Please verify the URL and ensure the History Server is running"
+            }), 503
+
+        # Collect jobs
+        logger.info(f"Collecting jobs from {history_server_url}")
+        job_data = collector.collect()
+
+        # Store in database
+        collected = 0
+        failed = 0
+        skipped = 0
+
+        with db.get_session() as session:
+            for job in job_data:
+                try:
+                    # Check if job already exists
+                    existing = session.query(SparkApplication).filter(
+                        SparkApplication.app_id == job["app_id"]
+                    ).first()
+
+                    if existing:
+                        logger.debug(f"Skipping existing job: {job['app_id']}")
+                        skipped += 1
+                        continue
+
+                    # Create new application record
+                    app = SparkApplication(**job)
+                    session.add(app)
+                    collected += 1
+
+                except Exception as e:
+                    logger.error(f"Error storing job {job.get('app_id', 'unknown')}: {e}")
+                    failed += 1
+                    continue
+
+            session.commit()
+
+        logger.info(f"Collection complete: {collected} collected, {failed} failed, {skipped} skipped")
+
+        return jsonify({
+            "success": True,
+            "collected": collected,
+            "failed": failed,
+            "skipped": skipped,
+            "message": f"Successfully collected {collected} jobs from History Server"
+        })
+
+    except Exception as e:
+        logger.error(f"Error collecting from History Server: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
 
 
