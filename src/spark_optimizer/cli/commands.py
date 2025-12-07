@@ -12,6 +12,7 @@ from typing import Optional
 
 # Import our modules (adjust imports based on your package structure)
 from spark_optimizer.collectors.event_log_collector import EventLogCollector
+from spark_optimizer.collectors.history_server_collector import HistoryServerCollector
 from spark_optimizer.storage.database import Database
 from spark_optimizer.recommender.similarity_recommender import SimilarityRecommender
 
@@ -76,6 +77,98 @@ def collect(event_log_dir: str, db_url: str, batch_size: int):
     click.echo(f"\n✓ Successfully processed {processed} jobs")
     if errors > 0:
         click.echo(f"✗ Failed to process {errors} jobs", err=True)
+
+
+@cli.command(name="collect-from-history-server")
+@click.option(
+    "--history-server-url",
+    required=True,
+    help="URL of Spark History Server (e.g., http://localhost:18080)",
+)
+@click.option(
+    "--db-url",
+    default="sqlite:///spark_optimizer.db",
+    help="Database URL (default: sqlite:///spark_optimizer.db)",
+)
+@click.option(
+    "--max-apps",
+    default=100,
+    type=int,
+    help="Maximum number of applications to fetch (default: 100)",
+)
+@click.option(
+    "--status",
+    default="completed",
+    type=click.Choice(["completed", "running", "all"]),
+    help="Application status filter (default: completed)",
+)
+@click.option(
+    "--timeout",
+    default=30,
+    type=int,
+    help="Request timeout in seconds (default: 30)",
+)
+def collect_from_history_server(
+    history_server_url: str, db_url: str, max_apps: int, status: str, timeout: int
+):
+    """Collect metrics from Spark History Server REST API and store in database"""
+
+    click.echo(f"Connecting to History Server: {history_server_url}")
+
+    # Initialize collector
+    config = {"max_apps": max_apps, "status": status, "timeout": timeout}
+    collector = HistoryServerCollector(history_server_url, config)
+
+    # Validate connection
+    if not collector.validate_config():
+        click.echo(
+            "✗ Failed to connect to History Server. Please check the URL and try again.",
+            err=True,
+        )
+        sys.exit(1)
+
+    click.echo("✓ Successfully connected to History Server")
+
+    # Initialize database
+    db = Database(db_url)
+
+    # Collect jobs
+    click.echo(f"Fetching up to {max_apps} applications with status={status}...")
+
+    try:
+        job_data = collector.collect()
+
+        if not job_data:
+            click.echo("No applications found matching criteria")
+            return
+
+        click.echo(f"Retrieved {len(job_data)} applications")
+
+        # Save to database
+        processed = 0
+        errors = 0
+
+        with click.progressbar(
+            job_data, label="Saving to database", show_pos=True
+        ) as bar:
+            for job in bar:
+                try:
+                    db.save_job(job)
+                    processed += 1
+                except Exception as e:
+                    errors += 1
+                    if errors <= 5:  # Only show first 5 errors
+                        click.echo(
+                            f"\nError saving job {job.get('app_id')}: {e}", err=True
+                        )
+
+        click.echo(f"\n✓ Successfully processed {processed} applications")
+        if errors > 0:
+            click.echo(f"✗ Failed to process {errors} applications", err=True)
+
+    except Exception as e:
+        click.echo(f"✗ Error collecting from History Server: {e}", err=True)
+        sys.exit(1)
 
 
 @cli.command()

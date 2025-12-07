@@ -46,6 +46,9 @@ python scripts/setup_db.py
 # Collect data from Spark event logs
 spark-optimizer collect --event-log-dir /path/to/spark/logs
 
+# Collect data from Spark History Server
+spark-optimizer collect-from-history-server --history-server-url http://localhost:18080
+
 # Get recommendations for a new job
 spark-optimizer recommend --input-size 10GB --job-type etl
 

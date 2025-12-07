@@ -55,7 +55,48 @@ spark-optimizer collect --event-log-dir ./sample_event_logs --db-url sqlite:///s
 - Run a Spark job with event logging enabled: `--conf spark.eventLog.enabled=true`
 - Or download sample logs from Spark examples
 
-### B. Test Database Operations
+### B. Test History Server Collection
+
+The History Server collector is **functional** and can fetch job metrics via the Spark History Server REST API:
+
+```bash
+# Test with a running History Server
+spark-optimizer collect-from-history-server \
+  --history-server-url http://localhost:18080 \
+  --db-url sqlite:///spark_optimizer.db \
+  --max-apps 50
+
+# Collect only completed applications
+spark-optimizer collect-from-history-server \
+  --history-server-url http://localhost:18080 \
+  --status completed \
+  --max-apps 100
+
+# Collect with custom timeout
+spark-optimizer collect-from-history-server \
+  --history-server-url http://localhost:18080 \
+  --timeout 60
+```
+
+**Note**: You'll need a running Spark History Server. To start one:
+```bash
+# Assuming you have Spark installed
+$SPARK_HOME/sbin/start-history-server.sh
+
+# Or with Docker
+docker run -p 18080:18080 \
+  -v /path/to/spark/logs:/tmp/spark-events \
+  apache/spark:latest \
+  /opt/spark/sbin/start-history-server.sh
+```
+
+**Expected behavior**:
+- The collector will connect to the History Server
+- Fetch application metadata via REST API
+- Parse executor metrics and configuration
+- Store normalized data in the database
+
+### C. Test Database Operations
 
 ```bash
 # View database statistics
@@ -65,17 +106,17 @@ spark-optimizer stats --db-url sqlite:///spark_optimizer.db
 spark-optimizer list-jobs --db-url sqlite:///spark_optimizer.db --limit 10
 ```
 
-### C. Test Job Analysis (if you have data)
+### D. Test Job Analysis (if you have data)
 
 ```bash
 # Analyze a specific job (requires job data in DB)
 spark-optimizer analyze --app-id <your-app-id> --db-url sqlite:///spark_optimizer.db
 ```
 
-### D. Test Recommendations ⚠️ (Partially Implemented)
+### E. Test Recommendations
 
 ```bash
-# Get recommendations (will use fallback logic since core logic is TODO)
+# Get recommendations
 spark-optimizer recommend \
   --input-size 10GB \
   --job-type etl \
@@ -84,9 +125,9 @@ spark-optimizer recommend \
   --format table
 ```
 
-**Expected behavior**: Should return a recommendation, but note that the similarity-based matching is not yet fully implemented (uses fallback logic).
+**Expected behavior**: Returns recommendations using similarity-based matching if historical data exists, otherwise uses smart fallback heuristics.
 
-### E. Test API Server
+### F. Test API Server
 
 Start the REST API server:
 
@@ -194,24 +235,24 @@ docker-compose up
 ### ✅ Currently Working:
 - CLI interface and command structure
 - Event log parsing (EventLogCollector)
+- **History Server REST API integration (HistoryServerCollector)** ✨ NEW
+- **Similarity-based recommendation engine** ✨ NEW
 - Database schema and storage
 - API server framework
-- Basic recommendation fallback logic
+- Smart fallback recommendation logic
 - Job analysis CLI command
+- **Comprehensive unit tests for collectors and recommenders** ✨ NEW
 
 ### ⚠️ Partially Working:
-- Recommendations (uses fallback, not similarity-based)
 - API endpoints (framework works, business logic has TODOs)
 
 ### ❌ Not Yet Implemented:
-- Similarity-based job matching
-- ML-based recommendations
+- ML-based predictions
 - Rule-based optimization
-- Cloud provider integrations (AWS, Databricks, GCP)
-- Feature extraction and analysis algorithms
+- Cloud provider integrations (AWS EMR, Databricks, GCP Dataproc)
 - Real-time monitoring
 - Auto-tuning
-- Most unit tests
+- Advanced feature extraction and analysis algorithms
 
 ## Quick Smoke Test
 
