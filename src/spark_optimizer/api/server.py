@@ -43,7 +43,9 @@ def init_app(db_url: str = "sqlite:///spark_optimizer.db"):
     rule_based_recommender = RuleBasedRecommender()
 
 
-def _ensure_initialized() -> tuple[Database, SimilarityRecommender, RuleBasedRecommender]:
+def _ensure_initialized() -> (
+    tuple[Database, SimilarityRecommender, RuleBasedRecommender]
+):
     """Ensure database and recommender are initialized.
 
     Returns:
@@ -80,7 +82,7 @@ def get_openapi_spec():
             openapi_path,
             mimetype="application/x-yaml",
             as_attachment=False,
-            download_name="openapi.yaml"
+            download_name="openapi.yaml",
         )
     except Exception as e:
         logger.error(f"Error serving OpenAPI spec: {e}", exc_info=True)
@@ -378,9 +380,7 @@ def collect_from_history_server():
 
         # Validate required fields
         if not data or "history_server_url" not in data:
-            return jsonify({
-                "error": "Missing required field: history_server_url"
-            }), 400
+            return jsonify({"error": "Missing required field: history_server_url"}), 400
 
         history_server_url = data["history_server_url"]
 
@@ -398,10 +398,15 @@ def collect_from_history_server():
 
         # Validate connectivity
         if not collector.validate_config():
-            return jsonify({
-                "error": f"Cannot connect to History Server at {history_server_url}",
-                "message": "Please verify the URL and ensure the History Server is running"
-            }), 503
+            return (
+                jsonify(
+                    {
+                        "error": f"Cannot connect to History Server at {history_server_url}",
+                        "message": "Please verify the URL and ensure the History Server is running",
+                    }
+                ),
+                503,
+            )
 
         # Collect jobs
         logger.info(f"Collecting jobs from {history_server_url}")
