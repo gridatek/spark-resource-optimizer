@@ -10,6 +10,7 @@ import logging
 
 from spark_optimizer.storage.database import Database
 from spark_optimizer.recommender.similarity_recommender import SimilarityRecommender
+from spark_optimizer.recommender.rule_based_recommender import RuleBasedRecommender
 from spark_optimizer.storage.models import SparkApplication
 
 # Configure logging
@@ -24,6 +25,7 @@ CORS(app)  # Enable CORS for all routes
 # This will be properly initialized when the app starts
 db: Optional[Database] = None
 recommender: Optional[SimilarityRecommender] = None
+rule_based_recommender: Optional[RuleBasedRecommender] = None
 
 
 def init_app(db_url: str = "sqlite:///spark_optimizer.db"):
@@ -32,24 +34,25 @@ def init_app(db_url: str = "sqlite:///spark_optimizer.db"):
     Args:
         db_url: Database connection string
     """
-    global db, recommender
+    global db, recommender, rule_based_recommender
     db = Database(db_url)
     db.create_tables()
     recommender = SimilarityRecommender(db=db)
+    rule_based_recommender = RuleBasedRecommender()
 
 
-def _ensure_initialized() -> tuple[Database, SimilarityRecommender]:
+def _ensure_initialized() -> tuple[Database, SimilarityRecommender, RuleBasedRecommender]:
     """Ensure database and recommender are initialized.
 
     Returns:
-        Tuple of (db, recommender) for type checking
+        Tuple of (db, recommender, rule_based_recommender) for type checking
 
     Raises:
         RuntimeError: If application is not initialized
     """
-    if db is None or recommender is None:
+    if db is None or recommender is None or rule_based_recommender is None:
         raise RuntimeError("Application not initialized. Call init_app() first.")
-    return (db, recommender)
+    return (db, recommender, rule_based_recommender)
 
 
 @app.route("/health", methods=["GET"])
@@ -75,7 +78,7 @@ def get_recommendation():
     }
     """
     try:
-        db, recommender = _ensure_initialized()
+        db, recommender, _ = _ensure_initialized()
 
         data = request.get_json()
 
@@ -157,7 +160,7 @@ def list_jobs():
     - max_duration: Maximum duration in seconds
     """
     try:
-        db, _ = _ensure_initialized()
+        db, _, _ = _ensure_initialized()
 
         limit = request.args.get("limit", 20, type=int)
         job_type = request.args.get("job_type")
@@ -218,7 +221,7 @@ def list_jobs():
 def get_job(app_id: str):
     """Get details for a specific job"""
     try:
-        db, _ = _ensure_initialized()
+        db, _, _ = _ensure_initialized()
 
         with db.get_session() as session:
             job = (
@@ -277,9 +280,9 @@ def get_job(app_id: str):
 
 @app.route("/api/v1/jobs/<app_id>/analyze", methods=["GET"])
 def analyze_job(app_id: str):
-    """Analyze a job and provide optimization suggestions"""
+    """Analyze a job and provide optimization suggestions using rule-based engine"""
     try:
-        db, _ = _ensure_initialized()
+        db, _, rb_recommender = _ensure_initialized()
 
         with db.get_session() as session:
             job = (
@@ -291,110 +294,32 @@ def analyze_job(app_id: str):
             if not job:
                 return jsonify({"error": "Job not found"}), 404
 
-            issues = []
-            suggestions = []
+            # Build job_data dictionary for rule-based recommender
+            job_data = {
+                "app_id": job.app_id,
+                "app_name": job.app_name,
+                "input_bytes": job.input_bytes or 0,
+                "output_bytes": job.output_bytes or 0,
+                "shuffle_read_bytes": job.shuffle_read_bytes or 0,
+                "shuffle_write_bytes": job.shuffle_write_bytes or 0,
+                "disk_spilled_bytes": job.disk_spilled_bytes or 0,
+                "memory_spilled_bytes": job.memory_spilled_bytes or 0,
+                "num_executors": job.num_executors or 0,
+                "executor_cores": job.executor_cores or 0,
+                "executor_memory_mb": job.executor_memory_mb or 0,
+                "driver_memory_mb": job.driver_memory_mb or 0,
+                "duration_ms": job.duration_ms or 0,
+                "jvm_gc_time": job.jvm_gc_time_ms or 0,
+                "total_tasks": job.total_tasks or 0,
+                "failed_tasks": job.failed_tasks or 0,
+                "total_stages": job.total_stages or 0,
+            }
 
-            # Check for spilling
-            if job.disk_spilled_bytes and job.disk_spilled_bytes > 0:
-                issues.append(
-                    {
-                        "type": "disk_spill",
-                        "severity": "high",
-                        "description": f"Disk spill detected: {job.disk_spilled_bytes / (1024**3):.2f} GB",
-                        "impact": "Significant performance degradation",
-                    }
-                )
-                if job.executor_memory_mb:
-                    suggestions.append(
-                        {
-                            "type": "increase_memory",
-                            "description": "Consider increasing executor memory",
-                            "recommendation": f"Try {int(job.executor_memory_mb * 1.5)} MB per executor",
-                        }
-                    )
+            # Use rule-based recommender for comprehensive analysis
+            analysis = rb_recommender.analyze_job(job_data)
 
-            # Check for GC issues
-            if (
-                job.executor_run_time_ms
-                and job.jvm_gc_time_ms
-                and job.executor_run_time_ms > 0
-            ):
-                gc_ratio = job.jvm_gc_time_ms / job.executor_run_time_ms
-                if gc_ratio > 0.1:
-                    issues.append(
-                        {
-                            "type": "high_gc",
-                            "severity": "medium",
-                            "description": f"High GC time: {gc_ratio*100:.1f}% of execution time",
-                            "impact": "Wasted CPU cycles on garbage collection",
-                        }
-                    )
-                    suggestions.append(
-                        {
-                            "type": "tune_gc",
-                            "description": "Optimize JVM garbage collection",
-                            "recommendation": "Consider using G1GC or increasing heap size",
-                        }
-                    )
-
-            # Check for task failures
-            if job.failed_tasks and job.total_tasks and job.failed_tasks > 0:
-                failure_rate = job.failed_tasks / job.total_tasks
-                severity = "high" if failure_rate > 0.1 else "medium"
-                issues.append(
-                    {
-                        "type": "task_failures",
-                        "severity": severity,
-                        "description": f"{job.failed_tasks} out of {job.total_tasks} tasks failed",
-                        "impact": "Retries waste resources and increase duration",
-                    }
-                )
-
-            # Check shuffle ratio
-            if job.input_bytes and job.shuffle_write_bytes and job.input_bytes > 0:
-                shuffle_ratio = job.shuffle_write_bytes / job.input_bytes
-                if shuffle_ratio > 0.5:
-                    issues.append(
-                        {
-                            "type": "high_shuffle",
-                            "severity": "medium",
-                            "description": f"High shuffle ratio: {shuffle_ratio*100:.1f}%",
-                            "impact": "Network and disk I/O bottleneck",
-                        }
-                    )
-                    suggestions.append(
-                        {
-                            "type": "optimize_shuffle",
-                            "description": "Reduce shuffle operations",
-                            "recommendation": "Consider broadcast joins or repartitioning strategy",
-                        }
-                    )
-
-            # Calculate efficiency score
-            efficiency_score = 100
-            if issues:
-                efficiency_score -= (
-                    len([i for i in issues if i["severity"] == "high"]) * 20
-                )
-                efficiency_score -= (
-                    len([i for i in issues if i["severity"] == "medium"]) * 10
-                )
-                efficiency_score = max(0, efficiency_score)
-
-            return jsonify(
-                {
-                    "app_id": app_id,
-                    "app_name": job.app_name,
-                    "efficiency_score": efficiency_score,
-                    "issues": issues,
-                    "suggestions": suggestions,
-                    "summary": (
-                        f"Found {len(issues)} potential issues"
-                        if issues
-                        else "No major issues detected"
-                    ),
-                }
-            )
+            # Return the full analysis with backward-compatible format
+            return jsonify(analysis)
 
     except Exception as e:
         logger.error(f"Error analyzing job: {e}", exc_info=True)
@@ -405,7 +330,7 @@ def analyze_job(app_id: str):
 def get_stats():
     """Get aggregate statistics"""
     try:
-        db, _ = _ensure_initialized()
+        db, _, _ = _ensure_initialized()
 
         from sqlalchemy import func
 
