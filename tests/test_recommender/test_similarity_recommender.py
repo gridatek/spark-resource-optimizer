@@ -22,7 +22,9 @@ class TestJobSimilarityCalculator:
         }
 
         score = calc.calculate_similarity(job, job)
-        assert score == pytest.approx(1.0, abs=0.01), "Identical jobs should have similarity of 1.0"
+        assert score == pytest.approx(
+            1.0, abs=0.01
+        ), "Identical jobs should have similarity of 1.0"
 
     def test_calculate_similarity_similar_jobs(self):
         """Test similarity calculation for similar jobs."""
@@ -47,7 +49,9 @@ class TestJobSimilarityCalculator:
         }
 
         score = calc.calculate_similarity(job1, job2)
-        assert 0.7 <= score <= 1.0, f"Similar jobs should have high similarity score, got {score}"
+        assert (
+            0.7 <= score <= 1.0
+        ), f"Similar jobs should have high similarity score, got {score}"
 
     def test_calculate_similarity_different_jobs(self):
         """Test similarity calculation for very different jobs."""
@@ -72,7 +76,9 @@ class TestJobSimilarityCalculator:
         }
 
         score = calc.calculate_similarity(job1, job2)
-        assert 0.0 <= score <= 0.5, f"Different jobs should have low similarity score, got {score}"
+        assert (
+            0.0 <= score <= 0.5
+        ), f"Different jobs should have low similarity score, got {score}"
 
     def test_size_similarity(self):
         """Test size similarity calculation."""
@@ -100,11 +106,15 @@ class TestJobSimilarityCalculator:
 
         # Similar names
         score = calc._text_similarity("my_etl_job", "my_etl_job_v2")
-        assert score > 0.7, f"Similar job names should have high text similarity, got {score}"
+        assert (
+            score > 0.7
+        ), f"Similar job names should have high text similarity, got {score}"
 
         # Different names
         score = calc._text_similarity("etl_job", "ml_training")
-        assert score < 0.5, f"Different job names should have low text similarity, got {score}"
+        assert (
+            score < 0.5
+        ), f"Different job names should have low text similarity, got {score}"
 
     def test_find_similar_jobs(self):
         """Test finding similar jobs from candidates."""
@@ -239,8 +249,14 @@ class TestSimilarityRecommender:
         )
 
         # Performance priority should allocate more resources
-        assert rec_performance["configuration"]["num_executors"] >= rec_balanced["configuration"]["num_executors"]
-        assert rec_performance["configuration"]["executor_memory_mb"] >= rec_balanced["configuration"]["executor_memory_mb"]
+        assert (
+            rec_performance["configuration"]["num_executors"]
+            >= rec_balanced["configuration"]["num_executors"]
+        )
+        assert (
+            rec_performance["configuration"]["executor_memory_mb"]
+            >= rec_balanced["configuration"]["executor_memory_mb"]
+        )
 
     def test_fallback_recommendation_cost_priority(self):
         """Test fallback recommendation with cost priority."""
@@ -257,8 +273,14 @@ class TestSimilarityRecommender:
         )
 
         # Cost priority should allocate fewer resources
-        assert rec_cost["configuration"]["num_executors"] <= rec_balanced["configuration"]["num_executors"]
-        assert rec_cost["configuration"]["executor_memory_mb"] <= rec_balanced["configuration"]["executor_memory_mb"]
+        assert (
+            rec_cost["configuration"]["num_executors"]
+            <= rec_balanced["configuration"]["num_executors"]
+        )
+        assert (
+            rec_cost["configuration"]["executor_memory_mb"]
+            <= rec_balanced["configuration"]["executor_memory_mb"]
+        )
 
     def test_average_configurations(self):
         """Test configuration averaging."""

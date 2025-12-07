@@ -147,7 +147,9 @@ class SimilarityRecommender(BaseRecommender):
                 }
                 self.historical_jobs.append(job_dict)
 
-    def _find_similar_jobs(self, job_requirements: Dict, top_k: int = None) -> List[Dict]:
+    def _find_similar_jobs(
+        self, job_requirements: Dict, top_k: int = None
+    ) -> List[Dict]:
         """Find similar jobs from historical data.
 
         Args:
@@ -162,7 +164,9 @@ class SimilarityRecommender(BaseRecommender):
 
         # Use similarity calculator to find similar jobs
         similar_jobs_with_scores = self.similarity_calculator.find_similar_jobs(
-            target_job=job_requirements, candidate_jobs=self.historical_jobs, top_k=top_k * 2
+            target_job=job_requirements,
+            candidate_jobs=self.historical_jobs,
+            top_k=top_k * 2,
         )
 
         # Filter by minimum similarity threshold
@@ -199,7 +203,10 @@ class SimilarityRecommender(BaseRecommender):
             weight = 1.0
 
             # Penalize jobs with spilling
-            if job.get("disk_spilled_bytes", 0) > 0 or job.get("memory_spilled_bytes", 0) > 0:
+            if (
+                job.get("disk_spilled_bytes", 0) > 0
+                or job.get("memory_spilled_bytes", 0) > 0
+            ):
                 weight *= 0.7
 
             # Bonus for faster jobs (relative to data processed)
@@ -238,9 +245,13 @@ class SimilarityRecommender(BaseRecommender):
         # Round to reasonable values
         return {
             "executor_cores": max(1, int(round(avg_executor_cores))),
-            "executor_memory_mb": max(1024, int(round(avg_executor_memory_mb / 1024) * 1024)),
+            "executor_memory_mb": max(
+                1024, int(round(avg_executor_memory_mb / 1024) * 1024)
+            ),
             "num_executors": max(1, int(round(avg_num_executors))),
-            "driver_memory_mb": max(1024, int(round(avg_driver_memory_mb / 1024) * 1024)),
+            "driver_memory_mb": max(
+                1024, int(round(avg_driver_memory_mb / 1024) * 1024)
+            ),
         }
 
     def _fallback_recommendation(self, job_requirements: Dict) -> Dict:
@@ -270,7 +281,9 @@ class SimilarityRecommender(BaseRecommender):
         scale_factor = max(0.5, min(5.0, input_gb / 10))
 
         num_executors = max(2, int(base_num_executors * scale_factor))
-        executor_memory_mb = int(base_executor_memory_mb * min(2.0, 1 + scale_factor / 10))
+        executor_memory_mb = int(
+            base_executor_memory_mb * min(2.0, 1 + scale_factor / 10)
+        )
 
         # Adjust based on job type
         if job_type == "ml":

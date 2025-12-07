@@ -87,7 +87,9 @@ class JobSimilarityCalculator:
 
         # Output size similarity
         if "output_bytes" in job1 and "output_bytes" in job2:
-            output_sim = self._size_similarity(job1["output_bytes"], job2["output_bytes"])
+            output_sim = self._size_similarity(
+                job1["output_bytes"], job2["output_bytes"]
+            )
             weight = self.weights["output_size"]
             scores.append(output_sim * weight)
             total_weight += weight
