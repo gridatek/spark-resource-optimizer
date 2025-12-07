@@ -264,7 +264,8 @@ class EMRCollector(BaseCollector):
                 ClusterStates=self.cluster_states,
                 CreatedAfter=created_after,
             )
-            return response.get("Clusters", [])[:self.max_clusters]
+            clusters = response.get("Clusters", [])
+            return clusters[: self.max_clusters]
         except Exception as e:
             print(f"Error listing clusters: {e}")
             return []
