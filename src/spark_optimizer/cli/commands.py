@@ -372,12 +372,19 @@ def parse_size_string(size_str: str) -> Optional[int]:
     """Parse size string like '10GB' to bytes"""
     size_str = size_str.upper().strip()
 
-    units = {"B": 1, "KB": 1024, "MB": 1024**2, "GB": 1024**3, "TB": 1024**4}
+    # Check units from longest to shortest to avoid matching "B" in "GB"
+    units = [
+        ("TB", 1024**4),
+        ("GB", 1024**3),
+        ("MB", 1024**2),
+        ("KB", 1024),
+        ("B", 1),
+    ]
 
-    for unit, multiplier in units.items():
+    for unit, multiplier in units:
         if size_str.endswith(unit):
             try:
-                value = float(size_str[: -len(unit)])
+                value = float(size_str[: -len(unit)].strip())
                 return int(value * multiplier)
             except ValueError:
                 return None
@@ -391,14 +398,13 @@ def output_table(rec):
     click.echo("Recommended Configuration")
     click.echo(f"{'='*60}\n")
 
+    config = rec["configuration"]
+
     config_data = [
-        ["Executors", rec.num_executors],
-        ["Cores per executor", rec.executor_cores],
-        ["Memory per executor", f"{rec.executor_memory_mb} MB"],
-        ["Driver memory", f"{rec.driver_memory_mb} MB"],
-        ["Driver cores", rec.driver_cores],
-        ["Shuffle partitions", rec.shuffle_partitions],
-        ["Dynamic allocation", "Enabled" if rec.dynamic_allocation else "Disabled"],
+        ["Executors", config.get("num_executors", "N/A")],
+        ["Cores per executor", config.get("executor_cores", "N/A")],
+        ["Memory per executor", f"{config.get('executor_memory_mb', 0)} MB"],
+        ["Driver memory", f"{config.get('driver_memory_mb', 0)} MB"],
     ]
 
     click.echo(tabulate(config_data, headers=["Parameter", "Value"], tablefmt="grid"))
@@ -407,43 +413,30 @@ def output_table(rec):
     click.echo("Predictions")
     click.echo(f"{'='*60}\n")
 
-    if rec.predicted_duration_ms:
+    click.echo(f"Confidence: {rec.get('confidence', 0):.0%}")
+    click.echo(f"Method: {rec.get('metadata', {}).get('method', 'unknown')}")
+
+    if rec.get("metadata", {}).get("similar_jobs_count"):
         click.echo(
-            f"Expected Duration: {rec.predicted_duration_ms / 60000:.2f} minutes"
+            f"\nBased on {rec['metadata']['similar_jobs_count']} similar historical jobs"
         )
-
-    if rec.predicted_cost:
-        click.echo(f"Expected Cost: ${rec.predicted_cost:.2f}")
-
-    click.echo(f"Confidence: {rec.confidence_score:.0%}")
-
-    click.echo(f"\n{rec.reasoning}")
-
-    if rec.similar_jobs:
-        click.echo(f"\nBased on {len(rec.similar_jobs)} similar historical jobs")
 
 
 def output_json(rec):
     """Output recommendation as JSON"""
-    from dataclasses import asdict
-
-    rec_dict = asdict(rec)
-    click.echo(json.dumps(rec_dict, indent=2, default=str))
+    # rec is already a dict, not a dataclass
+    click.echo(json.dumps(rec, indent=2, default=str))
 
 
 def output_spark_submit(rec):
     """Output recommendation as spark-submit command"""
+    config = rec["configuration"]
+
     click.echo("spark-submit \\")
-    click.echo(f"  --num-executors {rec.num_executors} \\")
-    click.echo(f"  --executor-cores {rec.executor_cores} \\")
-    click.echo(f"  --executor-memory {rec.executor_memory_mb}m \\")
-    click.echo(f"  --driver-memory {rec.driver_memory_mb}m \\")
-    click.echo(f"  --driver-cores {rec.driver_cores} \\")
-    click.echo(f"  --conf spark.sql.shuffle.partitions={rec.shuffle_partitions} \\")
-
-    if rec.dynamic_allocation:
-        click.echo("  --conf spark.dynamicAllocation.enabled=true \\")
-
+    click.echo(f"  --num-executors {config.get('num_executors', 5)} \\")
+    click.echo(f"  --executor-cores {config.get('executor_cores', 4)} \\")
+    click.echo(f"  --executor-memory {config.get('executor_memory_mb', 8192)}m \\")
+    click.echo(f"  --driver-memory {config.get('driver_memory_mb', 4096)}m \\")
     click.echo("  your-application.jar")
 
 
