@@ -116,7 +116,10 @@ class CompareRequest(BaseModel):
     """Request schema for /api/v1/compare endpoint."""
 
     app_ids: List[str] = Field(
-        ..., min_items=2, max_items=10, description="List of application IDs to compare"
+        ...,
+        min_length=2,
+        max_length=10,
+        description="List of application IDs to compare",
     )
     metrics: Optional[List[str]] = Field(
         None, description="Specific metrics to compare (all if not specified)"

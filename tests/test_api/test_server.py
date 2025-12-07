@@ -135,7 +135,7 @@ class TestRecommendEndpoint:
             response = client.post(
                 "/api/v1/recommend",
                 data=json.dumps(request_data),
-                content_type="application/json"
+                content_type="application/json",
             )
 
             assert response.status_code == 200

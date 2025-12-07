@@ -4,7 +4,6 @@ REST API Server for Spark Resource Optimizer
 
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
-from dataclasses import asdict
 from typing import Optional
 import logging
 import os
@@ -140,8 +139,9 @@ def get_recommendation():
             priority=priority,
         )
 
-        # Convert to dict
-        rec_dict = asdict(rec)
+        # rec is already a dict, no need to convert
+        # Extract configuration from rec
+        config = rec.get("configuration", rec)
 
         # Save recommendation to database
         db.save_recommendation(
@@ -152,22 +152,30 @@ def get_recommendation():
                 "job_type": job_type,
                 "sla_minutes": sla_minutes,
                 "budget_dollars": budget_dollars,
-                "recommended_executors": rec.num_executors,
-                "recommended_executor_cores": rec.executor_cores,
-                "recommended_executor_memory_mb": rec.executor_memory_mb,
+                "recommended_executors": config.get(
+                    "num_executors", rec.get("num_executors")
+                ),
+                "recommended_executor_cores": config.get(
+                    "executor_cores", rec.get("executor_cores")
+                ),
+                "recommended_executor_memory_mb": config.get(
+                    "executor_memory_mb", rec.get("executor_memory_mb")
+                ),
                 "recommended_configs": {
-                    "shuffle_partitions": rec.shuffle_partitions,
-                    "dynamic_allocation": rec.dynamic_allocation,
+                    "shuffle_partitions": rec.get("shuffle_partitions"),
+                    "dynamic_allocation": rec.get("dynamic_allocation"),
                 },
-                "predicted_duration_ms": rec.predicted_duration_ms,
-                "predicted_cost": rec.predicted_cost,
-                "confidence_score": rec.confidence_score,
-                "recommendation_method": rec.recommendation_method,
-                "similar_job_ids": rec.similar_jobs,
+                "predicted_duration_ms": rec.get("predicted_duration_ms"),
+                "predicted_cost": rec.get("predicted_cost"),
+                "confidence_score": rec.get("confidence", rec.get("confidence_score")),
+                "recommendation_method": rec.get("metadata", {}).get(
+                    "method", rec.get("recommendation_method", "similarity")
+                ),
+                "similar_job_ids": rec.get("similar_jobs", []),
             }
         )
 
-        return jsonify(rec_dict)
+        return jsonify(rec)
 
     except Exception as e:
         logger.error(f"Error generating recommendation: {e}", exc_info=True)
@@ -236,7 +244,7 @@ def list_jobs():
                     }
                 )
 
-            return jsonify({"jobs": jobs_list, "count": len(jobs_list)})
+            return jsonify({"jobs": jobs_list, "total": len(jobs_list), "limit": limit})
 
     except Exception as e:
         logger.error(f"Error listing jobs: {e}", exc_info=True)
