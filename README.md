@@ -36,6 +36,9 @@ cd spark-resource-optimizer
 # Install dependencies
 pip install -e .
 
+# Optional: Install with AWS support
+pip install -e ".[aws]"
+
 # Setup database
 python scripts/setup_db.py
 ```
@@ -48,6 +51,10 @@ spark-optimizer collect --event-log-dir /path/to/spark/logs
 
 # Collect data from Spark History Server
 spark-optimizer collect-from-history-server --history-server-url http://localhost:18080
+
+# Collect data from AWS EMR (requires boto3)
+pip install spark-resource-optimizer[aws]
+spark-optimizer collect-from-emr --region us-west-2
 
 # Get recommendations for a new job
 spark-optimizer recommend --input-size 10GB --job-type etl
@@ -85,7 +92,8 @@ spark-resource-optimizer/
 │   ├── architecture.md
 │   ├── data-collection.md
 │   ├── recommendation-engine.md
-│   └── api-reference.md
+│   ├── api-reference.md
+│   └── AWS_EMR_INTEGRATION.md
 ├── src/
 │   └── spark_optimizer/
 │       ├── __init__.py

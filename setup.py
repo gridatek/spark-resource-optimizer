@@ -39,6 +39,9 @@ setup(
             "mypy>=0.990",
             "pre-commit>=2.20.0",
         ],
+        "aws": [
+            "boto3>=1.26.0",
+        ],
     },
     entry_points={
         "console_scripts": [
