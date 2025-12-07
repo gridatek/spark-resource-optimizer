@@ -58,6 +58,8 @@ def test_imports():
 def test_database():
     """Test database creation and tables."""
     print("\n2. Testing database...")
+    db = None
+    result = False
     try:
         from spark_optimizer.storage.database import Database
         # Import models to register them with Base
@@ -73,23 +75,44 @@ def test_database():
 
         if tables:
             print(f"   {CHECK_MARK} Database created with {len(tables)} tables")
-            return True
+            result = True
         else:
             print(f"   {CROSS_MARK} No tables created")
-            return False
+            result = False
     except Exception as e:
         print(f"   {CROSS_MARK} Database test failed: {e}")
-        return False
+        result = False
     finally:
-        # Cleanup
+        # Cleanup - properly close database connection before removing file
+        if db is not None:
+            try:
+                db.engine.dispose()
+            except Exception:
+                pass
+
         import os
+        import time
         if os.path.exists("test_smoke.db"):
-            os.remove("test_smoke.db")
+            # On Windows, file might still be locked, retry a few times
+            for i in range(5):
+                try:
+                    os.remove("test_smoke.db")
+                    break
+                except PermissionError:
+                    if i < 4:  # Don't sleep on last attempt
+                        time.sleep(0.1)
+                    else:
+                        # Give up silently - file will be cleaned up eventually
+                        pass
+
+    return result
 
 
 def test_recommender():
     """Test the recommendation engine."""
     print("\n3. Testing recommender...")
+    db = None
+    result = False
     try:
         from spark_optimizer.storage.database import Database
         from spark_optimizer.recommender.similarity_recommender import SimilarityRecommender
@@ -114,20 +137,39 @@ def test_recommender():
             print(f"     - Cores: {config['executor_cores']}")
             print(f"     - Memory: {config['executor_memory_mb']} MB")
             print(f"     - Confidence: {rec['confidence']:.0%}")
-            return True
+            result = True
         else:
             print(f"   {CROSS_MARK} Invalid response structure")
-            return False
+            result = False
     except Exception as e:
         print(f"   {CROSS_MARK} Recommender test failed: {e}")
         import traceback
         traceback.print_exc()
-        return False
+        result = False
     finally:
-        # Cleanup
+        # Cleanup - properly close database connection before removing file
+        if db is not None:
+            try:
+                db.engine.dispose()
+            except Exception:
+                pass
+
         import os
+        import time
         if os.path.exists("test_smoke.db"):
-            os.remove("test_smoke.db")
+            # On Windows, file might still be locked, retry a few times
+            for i in range(5):
+                try:
+                    os.remove("test_smoke.db")
+                    break
+                except PermissionError:
+                    if i < 4:  # Don't sleep on last attempt
+                        time.sleep(0.1)
+                    else:
+                        # Give up silently - file will be cleaned up eventually
+                        pass
+
+    return result
 
 
 def test_cli():
