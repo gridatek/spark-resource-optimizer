@@ -148,7 +148,7 @@ class SimilarityRecommender(BaseRecommender):
                 self.historical_jobs.append(job_dict)
 
     def _find_similar_jobs(
-        self, job_requirements: Dict, top_k: int = None
+        self, job_requirements: Dict, top_k: Optional[int] = None
     ) -> List[Dict]:
         """Find similar jobs from historical data.
 
