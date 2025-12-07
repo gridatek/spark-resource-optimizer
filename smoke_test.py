@@ -1,11 +1,43 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 """
 Quick smoke test to verify the Spark Resource Optimizer is working correctly.
 Run this to test your local setup.
 """
 
 import sys
+import os
+import io
 from pathlib import Path
+
+# Handle encoding issues on Windows
+# Use ASCII-safe symbols if UTF-8 is not available
+try:
+    # Test if we can print Unicode
+    test_output = io.StringIO()
+    print("✓", file=test_output)
+    CHECK_MARK = "✓"
+    CROSS_MARK = "✗"
+except (UnicodeEncodeError, UnicodeDecodeError):
+    # Fall back to ASCII
+    CHECK_MARK = "[OK]"
+    CROSS_MARK = "[FAIL]"
+
+# Try to force UTF-8 on Windows
+if sys.platform == 'win32':
+    try:
+        import io
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+        CHECK_MARK = "✓"
+        CROSS_MARK = "✗"
+    except Exception:
+        # If that fails, use ASCII
+        CHECK_MARK = "[OK]"
+        CROSS_MARK = "[FAIL]"
+else:
+    CHECK_MARK = "✓"
+    CROSS_MARK = "✗"
 
 
 def test_imports():
@@ -16,10 +48,10 @@ def test_imports():
         from spark_optimizer.recommender.similarity_recommender import SimilarityRecommender
         from spark_optimizer.collectors.event_log_collector import EventLogCollector
         from spark_optimizer.cli.commands import cli
-        print("   ✓ All imports successful")
+        print(f"   {CHECK_MARK} All imports successful")
         return True
     except ImportError as e:
-        print(f"   ✗ Import failed: {e}")
+        print(f"   {CROSS_MARK} Import failed: {e}")
         return False
 
 
@@ -40,13 +72,13 @@ def test_database():
         tables = inspector.get_table_names()
 
         if tables:
-            print(f"   ✓ Database created with {len(tables)} tables")
+            print(f"   {CHECK_MARK} Database created with {len(tables)} tables")
             return True
         else:
-            print("   ✗ No tables created")
+            print(f"   {CROSS_MARK} No tables created")
             return False
     except Exception as e:
-        print(f"   ✗ Database test failed: {e}")
+        print(f"   {CROSS_MARK} Database test failed: {e}")
         return False
     finally:
         # Cleanup
@@ -77,17 +109,17 @@ def test_recommender():
         # Verify response structure
         if "configuration" in rec and "confidence" in rec:
             config = rec["configuration"]
-            print(f"   ✓ Recommender works (method: {rec['metadata'].get('method', 'unknown')})")
+            print(f"   {CHECK_MARK} Recommender works (method: {rec['metadata'].get('method', 'unknown')})")
             print(f"     - Executors: {config['num_executors']}")
             print(f"     - Cores: {config['executor_cores']}")
             print(f"     - Memory: {config['executor_memory_mb']} MB")
             print(f"     - Confidence: {rec['confidence']:.0%}")
             return True
         else:
-            print("   ✗ Invalid response structure")
+            print(f"   {CROSS_MARK} Invalid response structure")
             return False
     except Exception as e:
-        print(f"   ✗ Recommender test failed: {e}")
+        print(f"   {CROSS_MARK} Recommender test failed: {e}")
         import traceback
         traceback.print_exc()
         return False
@@ -111,17 +143,17 @@ def test_cli():
 
         if result.returncode == 0:
             version = result.stdout.strip()
-            print(f"   ✓ CLI working: {version}")
+            print(f"   {CHECK_MARK} CLI working: {version}")
             return True
         else:
-            print(f"   ✗ CLI failed: {result.stderr}")
+            print(f"   {CROSS_MARK} CLI failed: {result.stderr}")
             return False
     except FileNotFoundError:
-        print("   ✗ spark-optimizer command not found")
+        print(f"   {CROSS_MARK} spark-optimizer command not found")
         print("     Try: pip install -e .")
         return False
     except Exception as e:
-        print(f"   ✗ CLI test failed: {e}")
+        print(f"   {CROSS_MARK} CLI test failed: {e}")
         return False
 
 
@@ -147,7 +179,7 @@ def main():
     total = len(results)
 
     if passed == total:
-        print(f"✓ ALL TESTS PASSED ({passed}/{total})")
+        print(f"{CHECK_MARK} ALL TESTS PASSED ({passed}/{total})")
         print("\nYour environment is set up correctly!")
         print("\nNext steps:")
         print("  - See TESTING.md for detailed testing instructions")
@@ -155,7 +187,7 @@ def main():
         print("  - Try: spark-optimizer serve --port 8080")
         return 0
     else:
-        print(f"✗ SOME TESTS FAILED ({passed}/{total} passed)")
+        print(f"{CROSS_MARK} SOME TESTS FAILED ({passed}/{total} passed)")
         print("\nPlease check the errors above and:")
         print("  1. Make sure you're in the virtual environment")
         print("  2. Run: pip install -e .")
