@@ -10,7 +10,7 @@ import { SparkJob } from '../../models/job.model';
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.css']
 })
-export class DashboardComponent implements OnInit {
+export class Dashboard implements OnInit {
   recentJobs: SparkJob[] = [];
   totalJobs = 0;
   loading = false;

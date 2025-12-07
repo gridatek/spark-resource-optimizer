@@ -232,7 +232,7 @@ import {
     </div>
   `
 })
-export class RecommendationsComponent {
+export class Recommendations {
   request: RecommendationRequest = {
     input_size_gb: 10,
     job_type: 'etl'
