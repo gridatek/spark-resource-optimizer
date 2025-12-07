@@ -1,0 +1,243 @@
+name: Smoke Tests
+
+on:
+  push:
+    branches: [ main, feature/* ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  smoke-test:
+    name: Smoke Test - Python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ['3.9', '3.10', '3.11', '3.12', '3.13']
+        exclude:
+          # Skip some combinations to save CI time
+          - os: macos-latest
+            python-version: '3.9'
+          - os: macos-latest
+            python-version: '3.10'
+          - os: windows-latest
+            python-version: '3.9'
+          - os: windows-latest
+            python-version: '3.10'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e .
+
+    - name: Run smoke test
+      run: |
+        python smoke_test.py
+
+    - name: Test CLI commands
+      shell: bash
+      run: |
+        # Test version
+        spark-optimizer --version
+
+        # Test help
+        spark-optimizer --help
+
+        # Test database creation
+        python -c "from spark_optimizer.storage.database import Database; from spark_optimizer.storage.models import SparkApplication; db = Database('sqlite:///ci_test.db'); db.create_tables(); print('✓ DB created')"
+
+        # Test recommendation command
+        spark-optimizer recommend --input-size 10GB --job-type etl --db-url sqlite:///ci_test.db --format json > /dev/null
+
+        echo "✓ All CLI commands work"
+
+    - name: Test Python imports
+      run: |
+        python -c "from spark_optimizer.storage.database import Database; print('✓ Database import')"
+        python -c "from spark_optimizer.recommender.similarity_recommender import SimilarityRecommender; print('✓ Recommender import')"
+        python -c "from spark_optimizer.collectors.event_log_collector import EventLogCollector; print('✓ Collector import')"
+        python -c "from spark_optimizer.cli.commands import cli; print('✓ CLI import')"
+
+    - name: Cleanup
+      if: always()
+      shell: bash
+      run: |
+        rm -f ci_test.db test_smoke.db
+
+  functional-test:
+    name: Functional Tests
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e .
+
+    - name: Test Database Operations
+      run: |
+        python << 'EOF'
+        from spark_optimizer.storage.database import Database
+        from spark_optimizer.storage.models import SparkApplication
+        from datetime import datetime
+
+        # Create database
+        db = Database('sqlite:///functional_test.db')
+        db.create_tables()
+        print("✓ Database created")
+
+        # Test saving a job
+        job_dict = {
+            'app_id': 'app-test-001',
+            'app_name': 'test_job',
+            'user': 'ci_user',
+            'start_time': datetime.now(),
+            'duration_ms': 60000,
+            'executor_cores': 4,
+            'executor_memory': '8g',
+            'num_executors': 10,
+            'driver_memory': '4g',
+            'total_tasks': 100,
+            'failed_tasks': 0,
+            'input_bytes': 10737418240,  # 10GB
+            'output_bytes': 5368709120,   # 5GB
+            'shuffle_read_bytes': 0,
+            'shuffle_write_bytes': 0,
+        }
+
+        db.save_job(job_dict)
+        print("✓ Job saved to database")
+
+        # Verify job was saved
+        with db.get_session() as session:
+            count = session.query(SparkApplication).count()
+            assert count == 1, f"Expected 1 job, got {count}"
+            print(f"✓ Verified: {count} job in database")
+        EOF
+
+    - name: Test Recommender
+      run: |
+        python << 'EOF'
+        from spark_optimizer.storage.database import Database
+        from spark_optimizer.recommender.similarity_recommender import SimilarityRecommender
+
+        db = Database('sqlite:///functional_test.db')
+        recommender = SimilarityRecommender(db)
+
+        # Get recommendation
+        rec = recommender.recommend(
+            input_size_bytes=10 * 1024**3,
+            job_type='etl',
+            priority='balanced'
+        )
+
+        # Validate response
+        assert 'configuration' in rec, "Missing 'configuration' in response"
+        assert 'confidence' in rec, "Missing 'confidence' in response"
+
+        config = rec['configuration']
+        assert 'num_executors' in config, "Missing 'num_executors'"
+        assert 'executor_cores' in config, "Missing 'executor_cores'"
+        assert 'executor_memory_mb' in config, "Missing 'executor_memory_mb'"
+
+        print("✓ Recommender works correctly")
+        print(f"  - Executors: {config['num_executors']}")
+        print(f"  - Cores: {config['executor_cores']}")
+        print(f"  - Memory: {config['executor_memory_mb']} MB")
+        EOF
+
+    - name: Test CLI Database Commands
+      run: |
+        # Stats command
+        spark-optimizer stats --db-url sqlite:///functional_test.db
+
+        # List jobs command
+        spark-optimizer list-jobs --db-url sqlite:///functional_test.db --limit 10
+
+        echo "✓ Database CLI commands work"
+
+    - name: Cleanup
+      if: always()
+      run: |
+        rm -f functional_test.db
+
+  api-server-test:
+    name: Test API Server
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e .
+
+    - name: Start API server in background
+      run: |
+        spark-optimizer serve --port 8080 --db-url sqlite:///api_test.db &
+        SERVER_PID=$!
+        echo "SERVER_PID=$SERVER_PID" >> $GITHUB_ENV
+
+        # Wait for server to start
+        for i in {1..30}; do
+          if curl -f http://localhost:8080/health 2>/dev/null; then
+            echo "✓ Server started successfully"
+            exit 0
+          fi
+          echo "Waiting for server to start... ($i/30)"
+          sleep 2
+        done
+
+        echo "✗ Server failed to start"
+        exit 1
+
+    - name: Test API endpoints
+      run: |
+        # Health check
+        curl -f http://localhost:8080/health
+        echo "✓ Health endpoint works"
+
+        # Test if server is responding
+        curl -f http://localhost:8080/ || echo "Root endpoint returned error (expected)"
+
+    - name: Stop server
+      if: always()
+      run: |
+        if [ ! -z "$SERVER_PID" ]; then
+          kill $SERVER_PID || true
+        fi
+        pkill -f "spark-optimizer serve" || true
+
+    - name: Cleanup
+      if: always()
+      run: |
+        rm -f api_test.db
