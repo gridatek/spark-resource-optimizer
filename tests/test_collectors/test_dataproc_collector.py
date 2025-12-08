@@ -62,7 +62,7 @@ class TestDataprocCollector:
             "spark_optimizer.collectors.dataproc_collector.monitoring_v3.MetricServiceClient"
         ):
             collector = DataprocCollector(
-                project_id="test-project", region="us-west1", config=config
+                project_id="test-project", region="us-west1", config=config,
             )
 
             assert collector.cluster_names == ["cluster1", "cluster2"]
@@ -148,7 +148,7 @@ class TestDataprocCollector:
         }
 
         collector = DataprocCollector(
-            project_id="test-project", region="us-central1", config=config
+            project_id="test-project", region="us-central1", config=config,
         )
         filter_str = collector._build_cluster_filter()
 
@@ -338,9 +338,7 @@ class TestDataprocCollector:
             },
         }
 
-        collector = DataprocCollector(
-            project_id="test-project", region="us-central1"
-        )
+        collector = DataprocCollector(project_id="test-project", region="us-central1")
 
         cost = collector._calculate_job_cost(cluster_details, 3600000)
 
@@ -361,9 +359,7 @@ class TestDataprocCollector:
         self, mock_monitoring, mock_job_client, mock_cluster_client
     ):
         """Test machine type recommendations for memory-intensive workload."""
-        collector = DataprocCollector(
-            project_id="test-project", region="us-central1"
-        )
+        collector = DataprocCollector(project_id="test-project", region="us-central1")
 
         workload = {"memory_intensive": True, "job_type": "ml"}
 
@@ -387,9 +383,7 @@ class TestDataprocCollector:
         self, mock_monitoring, mock_job_client, mock_cluster_client
     ):
         """Test machine type recommendations for compute-intensive workload."""
-        collector = DataprocCollector(
-            project_id="test-project", region="us-central1"
-        )
+        collector = DataprocCollector(project_id="test-project", region="us-central1")
 
         workload = {"compute_intensive": True, "job_type": "streaming"}
 
@@ -413,9 +407,7 @@ class TestDataprocCollector:
         self, mock_monitoring, mock_job_client, mock_cluster_client
     ):
         """Test machine type recommendations for cost-optimized workload."""
-        collector = DataprocCollector(
-            project_id="test-project", region="us-central1"
-        )
+        collector = DataprocCollector(project_id="test-project", region="us-central1")
 
         workload = {"cost_optimized": True, "job_type": "batch"}
 
@@ -439,9 +431,7 @@ class TestDataprocCollector:
         self, mock_monitoring, mock_job_client, mock_cluster_client
     ):
         """Test machine type recommendations for ETL workload."""
-        collector = DataprocCollector(
-            project_id="test-project", region="us-central1"
-        )
+        collector = DataprocCollector(project_id="test-project", region="us-central1")
 
         workload = {"job_type": "etl"}
 
@@ -465,9 +455,7 @@ class TestDataprocCollector:
         self, mock_monitoring, mock_job_client, mock_cluster_client
     ):
         """Test preemptible worker recommendations."""
-        collector = DataprocCollector(
-            project_id="test-project", region="us-central1"
-        )
+        collector = DataprocCollector(project_id="test-project", region="us-central1")
 
         # Batch workload should recommend preemptible
         workload = {"job_type": "batch"}
