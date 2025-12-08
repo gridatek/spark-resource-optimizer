@@ -283,7 +283,7 @@ export class Dashboard implements OnInit, OnDestroy {
       : 0;
   }
 
-  getStatusClass(status: string): string {
+  getStatusClass(status: string | undefined): string {
     if (status === 'completed') return 'bg-green-200 text-green-900';
     if (status === 'failed') return 'bg-red-200 text-red-900';
     if (status === 'running') return 'bg-blue-200 text-blue-900';
