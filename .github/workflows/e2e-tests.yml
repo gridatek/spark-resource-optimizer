@@ -116,7 +116,7 @@ jobs:
                       'shuffle_write_bytes': random.randint(100000000, 10000000000)
                   }
               }
-              db.store_job(job_data)
+              db.save_job(job_data)
 
           print(f'Seeded {20} test jobs')
           "
@@ -263,7 +263,7 @@ jobs:
                       'shuffle_write_bytes': random.randint(100000000, 10000000000)
                   }
               }
-              db.store_job(job_data)
+              db.save_job(job_data)
           "
 
       - name: Start backend server
