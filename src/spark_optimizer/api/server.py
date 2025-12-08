@@ -233,14 +233,24 @@ def list_jobs():
                         "start_time": job.start_time.isoformat(),
                         "end_time": job.end_time.isoformat() if job.end_time else None,
                         "duration_ms": job.duration_ms,
-                        "num_executors": job.num_executors,
-                        "executor_cores": job.executor_cores,
-                        "executor_memory_mb": job.executor_memory_mb,
-                        "input_bytes": job.input_bytes,
-                        "shuffle_write_bytes": job.shuffle_write_bytes,
-                        "total_tasks": job.total_tasks,
-                        "failed_tasks": job.failed_tasks,
                         "estimated_cost": job.estimated_cost,
+                        "configuration": {
+                            "num_executors": job.num_executors,
+                            "executor_cores": job.executor_cores,
+                            "executor_memory_mb": job.executor_memory_mb,
+                            "driver_memory_mb": job.driver_memory_mb,
+                        },
+                        "metrics": {
+                            "total_tasks": job.total_tasks,
+                            "failed_tasks": job.failed_tasks,
+                            "total_stages": job.total_stages,
+                            "input_bytes": job.input_bytes,
+                            "output_bytes": job.output_bytes,
+                            "shuffle_read_bytes": job.shuffle_read_bytes,
+                            "shuffle_write_bytes": job.shuffle_write_bytes,
+                            "memory_spilled_bytes": job.memory_spilled_bytes,
+                            "disk_spilled_bytes": job.disk_spilled_bytes,
+                        },
                     }
                 )
 

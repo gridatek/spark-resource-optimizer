@@ -383,7 +383,7 @@ export class ChartsComponent implements OnInit {
           label: 'Input Data (GB)',
           data: dates.map(date => {
             const dayJobs = jobsByDate[date];
-            const totalInput = dayJobs.reduce((sum, job) => sum + job.metrics.input_bytes, 0);
+            const totalInput = dayJobs.reduce((sum, job) => sum + (job.metrics.input_bytes || 0), 0);
             return Number((totalInput / (1024 ** 3)).toFixed(2));
           }),
           backgroundColor: 'rgba(59, 130, 246, 0.8)',
@@ -392,7 +392,7 @@ export class ChartsComponent implements OnInit {
           label: 'Output Data (GB)',
           data: dates.map(date => {
             const dayJobs = jobsByDate[date];
-            const totalOutput = dayJobs.reduce((sum, job) => sum + job.metrics.output_bytes, 0);
+            const totalOutput = dayJobs.reduce((sum, job) => sum + (job.metrics.output_bytes || 0), 0);
             return Number((totalOutput / (1024 ** 3)).toFixed(2));
           }),
           backgroundColor: 'rgba(34, 197, 94, 0.8)',

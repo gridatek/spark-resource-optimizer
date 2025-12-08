@@ -2,14 +2,15 @@ export interface SparkJob {
   app_id: string;
   app_name: string;
   user: string;
-  submit_time: string;
+  submit_time?: string;
   start_time: string;
-  end_time: string;
+  end_time?: string;
   duration_ms: number;
-  status: 'completed' | 'failed' | 'running';
+  status?: 'completed' | 'failed' | 'running';
   spark_version?: string;
   configuration: JobConfiguration;
   metrics: JobMetrics;
+  estimated_cost?: number;
 }
 
 export interface JobConfiguration {
