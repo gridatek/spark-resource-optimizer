@@ -197,9 +197,7 @@ class DataprocCollector(BaseCollector):
                 # Get jobs for this cluster
                 jobs = self._get_cluster_jobs(cluster_name)
 
-                print(
-                    f"Cluster '{cluster_name}': Found {len(jobs)} job(s)"
-                )
+                print(f"Cluster '{cluster_name}': Found {len(jobs)} job(s)")
 
                 # Convert jobs to metrics format
                 for job in jobs:
@@ -250,9 +248,7 @@ class DataprocCollector(BaseCollector):
 
         # Filter by cluster names
         if self.cluster_names:
-            name_filters = [
-                f'clusterName = "{name}"' for name in self.cluster_names
-            ]
+            name_filters = [f'clusterName = "{name}"' for name in self.cluster_names]
             filters.append(f"({' OR '.join(name_filters)})")
 
         # Filter by labels
@@ -261,7 +257,7 @@ class DataprocCollector(BaseCollector):
                 filters.append(f'labels.{key} = "{value}"')
 
         # Only active clusters
-        filters.append('status.state = RUNNING OR status.state = UPDATING')
+        filters.append("status.state = RUNNING OR status.state = UPDATING")
 
         return " AND ".join(filters) if filters else ""
 
@@ -294,16 +290,16 @@ class DataprocCollector(BaseCollector):
                 "state": cluster.status.state.name,
                 "master_config": {
                     "num_instances": config.master_config.num_instances,
-                    "machine_type": config.master_config.machine_type_uri.split(
-                        "/"
-                    )[-1],
+                    "machine_type": config.master_config.machine_type_uri.split("/")[
+                        -1
+                    ],
                     "disk_size_gb": config.master_config.disk_config.boot_disk_size_gb,
                 },
                 "worker_config": {
                     "num_instances": config.worker_config.num_instances,
-                    "machine_type": config.worker_config.machine_type_uri.split(
-                        "/"
-                    )[-1],
+                    "machine_type": config.worker_config.machine_type_uri.split("/")[
+                        -1
+                    ],
                     "disk_size_gb": config.worker_config.disk_config.boot_disk_size_gb,
                 },
                 "labels": dict(cluster.labels),
@@ -400,9 +396,7 @@ class DataprocCollector(BaseCollector):
             ]:
                 end_time = job.status.state_start_time.timestamp()
                 if hasattr(job.status, "details"):
-                    duration_ms = int(
-                        (end_time - start_time) * 1000
-                    )
+                    duration_ms = int((end_time - start_time) * 1000)
 
             # Extract machine type information
             worker_config = cluster_details.get("worker_config", {})
@@ -418,7 +412,9 @@ class DataprocCollector(BaseCollector):
             metrics = {
                 "app_id": f"{cluster_name}-{job_id}",
                 "app_name": job.reference.job_id,
-                "user": job.status.details if hasattr(job.status, "details") else "unknown",
+                "user": (
+                    job.status.details if hasattr(job.status, "details") else "unknown"
+                ),
                 "start_time": int(start_time * 1000),
                 "end_time": int(end_time * 1000) if end_time else None,
                 "duration_ms": duration_ms,
@@ -427,8 +423,12 @@ class DataprocCollector(BaseCollector):
                 "executor_memory_mb": int(machine_specs["memory_gb"] * 1024),
                 "driver_memory_mb": int(machine_specs["memory_gb"] * 1024),
                 "total_tasks": 0,  # Not directly available
-                "failed_tasks": 1 if job.status.state == dataproc_v1.JobStatus.State.ERROR else 0,
-                "succeeded_tasks": 1 if job.status.state == dataproc_v1.JobStatus.State.DONE else 0,
+                "failed_tasks": (
+                    1 if job.status.state == dataproc_v1.JobStatus.State.ERROR else 0
+                ),
+                "succeeded_tasks": (
+                    1 if job.status.state == dataproc_v1.JobStatus.State.DONE else 0
+                ),
                 "input_bytes": 0,  # Would need metrics API
                 "output_bytes": 0,  # Would need metrics API
                 "shuffle_read_bytes": 0,

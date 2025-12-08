@@ -179,9 +179,7 @@ class TestDatabricksCollector:
         collector = DatabricksCollector(
             workspace_url="https://dbc-test.cloud.databricks.com", token="test"
         )
-        metrics = collector._convert_run_to_metrics(
-            "cluster-123", cluster_details, run
-        )
+        metrics = collector._convert_run_to_metrics("cluster-123", cluster_details, run)
 
         assert metrics is not None
         assert metrics["app_id"] == "cluster-123-12345"
@@ -255,9 +253,7 @@ class TestDatabricksCollector:
 
         workload = {"io_intensive": True, "job_type": "streaming"}
 
-        recommendation = collector.get_cluster_recommendations(
-            "Standard_F8s", workload
-        )
+        recommendation = collector.get_cluster_recommendations("Standard_F8s", workload)
 
         assert recommendation["recommended_cluster_type"] == "Standard_DS4_v2"
         assert "i/o" in recommendation["reason"].lower()

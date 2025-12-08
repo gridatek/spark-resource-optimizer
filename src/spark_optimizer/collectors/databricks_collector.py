@@ -116,15 +116,11 @@ class DatabricksCollector(BaseCollector):
         # Basic auth (if username/password provided)
         self.auth = None
         if self.config.get("username") and self.config.get("password"):
-            self.auth = HTTPBasicAuth(
-                self.config["username"], self.config["password"]
-            )
+            self.auth = HTTPBasicAuth(self.config["username"], self.config["password"])
 
         # Configuration
         self.cluster_ids = self.config.get("cluster_ids", [])
-        self.cluster_states = self.config.get(
-            "cluster_states", ["RUNNING", "PENDING"]
-        )
+        self.cluster_states = self.config.get("cluster_states", ["RUNNING", "PENDING"])
         self.max_clusters = self.config.get("max_clusters", 20)
         self.days_back = self.config.get("days_back", 7)
         self.collect_sql_analytics = self.config.get("collect_sql_analytics", True)
@@ -222,7 +218,9 @@ class DatabricksCollector(BaseCollector):
         # Memory-intensive workloads (ML, caching)
         if memory_intensive or job_type == "ml":
             recommended = "Standard_E8s_v3" if is_azure else "r5d.2xlarge"
-            reason = "Memory-intensive workload - recommending memory-optimized instances"
+            reason = (
+                "Memory-intensive workload - recommending memory-optimized instances"
+            )
 
         # I/O-intensive workloads (streaming, real-time)
         elif io_intensive or job_type == "streaming":
@@ -243,9 +241,7 @@ class DatabricksCollector(BaseCollector):
         current_dbu = self.CLUSTER_TYPES.get(current_cluster_type, {}).get(
             "dbu_per_hour", 0
         )
-        recommended_dbu = self.CLUSTER_TYPES.get(recommended, {}).get(
-            "dbu_per_hour", 0
-        )
+        recommended_dbu = self.CLUSTER_TYPES.get(recommended, {}).get("dbu_per_hour", 0)
 
         if current_dbu > 0:
             cost_change = ((recommended_dbu - current_dbu) / current_dbu) * 100
@@ -328,9 +324,7 @@ class DatabricksCollector(BaseCollector):
         response.raise_for_status()
         return response.json()
 
-    def _fetch_applications(
-        self, cluster_id: str, cluster_details: Dict
-    ) -> List[Dict]:
+    def _fetch_applications(self, cluster_id: str, cluster_details: Dict) -> List[Dict]:
         """Fetch Spark applications from a Databricks cluster.
 
         This fetches job runs associated with the cluster.
@@ -407,9 +401,7 @@ class DatabricksCollector(BaseCollector):
             num_workers = autoscale.get("max_workers", num_workers)
 
         # Get node specs
-        node_specs = self.CLUSTER_TYPES.get(
-            node_type_id, {"cores": 4, "memory_gb": 14}
-        )
+        node_specs = self.CLUSTER_TYPES.get(node_type_id, {"cores": 4, "memory_gb": 14})
 
         # Calculate executor configuration
         executor_cores = node_specs["cores"]
@@ -424,9 +416,7 @@ class DatabricksCollector(BaseCollector):
             return None
 
         start_time = datetime.fromtimestamp(start_time_ms / 1000.0)
-        end_time = (
-            datetime.fromtimestamp(end_time_ms / 1000.0) if end_time_ms else None
-        )
+        end_time = datetime.fromtimestamp(end_time_ms / 1000.0) if end_time_ms else None
 
         duration_ms = 0
         if end_time_ms and start_time_ms:
@@ -464,9 +454,7 @@ class DatabricksCollector(BaseCollector):
                 "cluster_id": cluster_id,
                 "cluster_name": cluster_details.get("cluster_name", ""),
                 "node_type": node_type_id,
-                "databricks_runtime": cluster_details.get(
-                    "spark_version", "unknown"
-                ),
+                "databricks_runtime": cluster_details.get("spark_version", "unknown"),
                 "job_id": str(run.get("job_id", "")),
                 "run_id": str(run.get("run_id", "")),
                 "run_state": result_state,
