@@ -44,3 +44,8 @@ Thumbs.db
 
 # Configuration
 /src/config.json
+
+# Playwright
+/test-results/
+/playwright-report/
+/playwright/.cache/
