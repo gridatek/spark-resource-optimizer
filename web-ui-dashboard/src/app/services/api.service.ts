@@ -12,10 +12,9 @@ import {
   providedIn: 'root'
 })
 export class ApiService {
-  private http = inject(HttpClient);
   private config$: Observable<{ apiUrl: string }>;
 
-  constructor() {
+  constructor(private http: HttpClient) {
     this.config$ = this.http.get<{ apiUrl: string }>('/config.json').pipe(
       catchError(error => {
         console.error('Failed to load config.json, using default', error);
@@ -77,7 +76,11 @@ export class ApiService {
   // Recommendations
   getRecommendation(request: RecommendationRequest): Observable<RecommendationResponse> {
     return this.getApiUrl().pipe(
-      switchMap(apiUrl => this.http.post<RecommendationResponse>(`${apiUrl}/api/v1/recommend`, request))
+      switchMap(apiUrl => {
+        console.log('Making recommendation request to:', `${apiUrl}/api/v1/recommend`);
+        console.log('Request payload:', request);
+        return this.http.post<RecommendationResponse>(`${apiUrl}/api/v1/recommend`, request);
+      })
     );
   }
 
