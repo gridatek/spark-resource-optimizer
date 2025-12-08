@@ -62,7 +62,9 @@ class TestDataprocCollector:
             "spark_optimizer.collectors.dataproc_collector.monitoring_v3.MetricServiceClient"
         ):
             collector = DataprocCollector(
-                project_id="test-project", region="us-west1", config=config,
+                project_id="test-project",
+                region="us-west1",
+                config=config,
             )
 
             assert collector.cluster_names == ["cluster1", "cluster2"]
@@ -148,7 +150,9 @@ class TestDataprocCollector:
         }
 
         collector = DataprocCollector(
-            project_id="test-project", region="us-central1", config=config,
+            project_id="test-project",
+            region="us-central1",
+            config=config,
         )
         filter_str = collector._build_cluster_filter()
 
@@ -479,9 +483,7 @@ class TestDataprocCollector:
         assert recommendation["preemptible_recommended"] is True
 
 
-@pytest.mark.skipif(
-    GOOGLE_CLOUD_AVAILABLE, reason="Testing import error handling"
-)
+@pytest.mark.skipif(GOOGLE_CLOUD_AVAILABLE, reason="Testing import error handling")
 def test_dataproc_collector_import_error():
     """Test that DataprocCollector raises ImportError when google-cloud not installed."""
     pass
