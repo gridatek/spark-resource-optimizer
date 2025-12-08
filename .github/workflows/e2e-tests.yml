@@ -73,6 +73,7 @@ jobs:
           mkdir -p data
           python -c "
           from spark_optimizer.storage.database import Database
+          from spark_optimizer.storage.models import SparkApplication  # Import models to register with Base
           db = Database('sqlite:///data/test_spark_optimizer.db')
           db.create_tables()
           print('Test database created successfully')
@@ -222,6 +223,7 @@ jobs:
           mkdir -p data
           python -c "
           from spark_optimizer.storage.database import Database
+          from spark_optimizer.storage.models import SparkApplication  # Import models to register with Base
           db = Database('sqlite:///data/test_spark_optimizer.db')
           db.create_tables()
           "
