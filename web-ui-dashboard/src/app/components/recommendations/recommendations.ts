@@ -96,7 +96,7 @@ import {
                 [disabled]="loading || !recForm.form.valid"
                 class="px-6 py-3 bg-blue-500 text-white rounded-md font-medium hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
               >
-                {{ loading ? 'Getting Recommendation...' : 'Get Recommendation' }}
+                {{ loading! ? 'Getting Recommendation...' : 'Get Recommendation' }}
               </button>
               <button
                 type="button"
@@ -120,9 +120,9 @@ import {
           <div class="bg-white rounded-lg p-8 shadow">
             <h2 class="text-2xl font-semibold text-gray-900 mb-6">Recommended Configuration</h2>
 
-            <div [class]="'inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold mb-6 ' + getConfidenceColor(recommendation().confidence)">
+            <div [class]="'inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold mb-6 ' + getConfidenceColor(recommendation()?.confidence!)">
               <span>Confidence:</span>
-              <span>{{ (recommendation().confidence * 100).toFixed(0) }}%</span>
+              <span>{{ (recommendation()?.confidence! * 100).toFixed(0) }}%</span>
             </div>
 
             <div class="grid grid-cols-2 gap-4 mb-8">
@@ -133,7 +133,7 @@ import {
                     Executor Cores
                   </h4>
                   <p class="text-2xl font-bold text-gray-900">
-                    {{ recommendation().configuration.executor_cores }}
+                    {{ recommendation()?.configuration!.executor_cores! }}
                   </p>
                 </div>
               </div>
@@ -145,7 +145,7 @@ import {
                     Executor Memory
                   </h4>
                   <p class="text-2xl font-bold text-gray-900">
-                    {{ formatMemory(recommendation().configuration.executor_memory_mb) }}
+                    {{ formatMemory(recommendation()?.configuration!.executor_memory_mb!) }}
                   </p>
                 </div>
               </div>
@@ -157,7 +157,7 @@ import {
                     Number of Executors
                   </h4>
                   <p class="text-2xl font-bold text-gray-900">
-                    {{ recommendation().configuration.num_executors }}
+                    {{ recommendation()?.configuration?.num_executors! }}
                   </p>
                 </div>
               </div>
@@ -169,27 +169,27 @@ import {
                     Driver Memory
                   </h4>
                   <p class="text-2xl font-bold text-gray-900">
-                    {{ formatMemory(recommendation().configuration.driver_memory_mb) }}
+                    {{ formatMemory(recommendation()?.configuration!.driver_memory_mb!) }}
                   </p>
                 </div>
               </div>
             </div>
 
             <!-- Predicted Metrics -->
-            @if (recommendation().predicted_metrics) {
+            @if (recommendation()?.predicted_metrics) {
               <div class="mb-8 p-4 bg-blue-50 rounded-md">
                 <h3 class="text-lg font-semibold text-gray-900 mb-4">Predicted Performance</h3>
                 <div class="grid grid-cols-2 gap-4">
                   <div class="flex justify-between">
                     <span class="text-blue-800 font-medium">Duration:</span>
                     <span class="text-gray-900 font-bold">
-                      ~{{ recommendation().predicted_metrics.duration_minutes }} minutes
+                      ~{{ recommendation()?.predicted_metrics?.duration_minutes! }} minutes
                     </span>
                   </div>
                   <div class="flex justify-between">
                     <span class="text-blue-800 font-medium">Estimated Cost:</span>
                     <span class="text-gray-900 font-bold">
-                      \${{ recommendation().predicted_metrics.cost_usd.toFixed(2) }}
+                      \${{ recommendation()?.predicted_metrics?.cost_usd!.toFixed(2) }}
                     </span>
                   </div>
                 </div>
@@ -199,11 +199,11 @@ import {
             <!-- Metadata -->
             <div class="mb-8 p-4 bg-gray-50 rounded-md">
               <div class="text-gray-700 text-sm mb-2">
-                <strong>Method:</strong> {{ recommendation().method | titlecase }}
+                <strong>Method:</strong> {{ recommendation()?.method | titlecase }}
               </div>
-              @if (recommendation().metadata?.similar_jobs) {
+              @if (recommendation()?.metadata?.similar_jobs) {
                 <div class="text-gray-700 text-sm">
-                  <strong>Based on:</strong> {{ recommendation().metadata?.similar_jobs?.length }} similar jobs
+                  <strong>Based on:</strong> {{ recommendation()?.metadata?.similar_jobs?.length }} similar jobs
                 </div>
               }
             </div>
@@ -259,7 +259,7 @@ import {
             }
 
             <!-- Cost-Performance Trade-off -->
-            @if (recommendation().predicted_metrics) {
+            @if (recommendation()?.predicted_metrics) {
               <div class="mb-8">
                 <h3 class="text-lg font-semibold text-gray-900 mb-4">Cost-Performance Indicator</h3>
                 <div class="bg-gray-50 rounded-md p-6">
@@ -282,8 +282,8 @@ import {
                     </div>
                   </div>
                   <div class="text-center text-sm text-gray-600">
-                    This configuration balances cost (\${{ recommendation().predicted_metrics.cost_usd.toFixed(2) }})
-                    and performance (~{{ recommendation().predicted_metrics.duration_minutes }} min)
+                    This configuration balances cost (\${{ recommendation()?.predicted_metrics?.cost_usd!.toFixed(2) }})
+                    and performance (~{{ recommendation()?.predicted_metrics?.duration_minutes! }} min)
                   </div>
                 </div>
               </div>
@@ -294,10 +294,10 @@ import {
               <h3 class="text-lg font-semibold text-gray-900 mb-4">Spark Submit Command</h3>
               <div class="bg-gray-800 rounded-md p-4 overflow-x-auto">
                 <pre class="text-gray-200 text-sm font-mono leading-relaxed"><code>spark-submit \
-  --num-executors {{ recommendation().configuration.num_executors }} \
-  --executor-cores {{ recommendation().configuration.executor_cores }} \
-  --executor-memory {{ formatMemory(recommendation().configuration.executor_memory_mb) }} \
-  --driver-memory {{ formatMemory(recommendation().configuration.driver_memory_mb) }} \
+  --num-executors {{ recommendation()?.configuration?.num_executors! }} \
+  --executor-cores {{ recommendation()?.configuration?.executor_cores! }} \
+  --executor-memory {{ formatMemory(recommendation()?.configuration?.executor_memory_mb!) }} \
+  --driver-memory {{ formatMemory(recommendation()?.configuration?.driver_memory_mb!) }} \
   your-spark-app.jar</code></pre>
               </div>
               <button
