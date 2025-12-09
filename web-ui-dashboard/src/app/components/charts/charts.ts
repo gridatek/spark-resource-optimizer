@@ -1,4 +1,4 @@
-import { Component, OnInit, ChangeDetectionStrategy, signal } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { BaseChartDirective } from 'ng2-charts';
 import { ChartConfiguration, ChartType } from 'chart.js';
@@ -235,7 +235,7 @@ export class ChartsComponent implements OnInit {
     }
   };
 
-  constructor(private apiService: ApiService) {}
+  private readonly apiService = inject(ApiService);
 
   ngOnInit(): void {
     this.loadChartData();
@@ -251,9 +251,8 @@ export class ChartsComponent implements OnInit {
         this.processChartData(response.jobs);
         this.loading.set(false);
       },
-      error: (err) => {
+      error: () => {
         this.error.set('Failed to load analytics data');
-        console.error('Error loading charts:', err);
         this.loading.set(false);
       }
     });

@@ -94,7 +94,7 @@ import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
       <!-- Footer -->
       <footer class="bg-white border-t border-gray-200 mt-auto">
         <div class="max-w-7xl mx-auto px-8 py-8 flex flex-col md:flex-row justify-between items-center gap-4 md:gap-0">
-          <p class="text-gray-600 m-0">&copy; 2024 Gridatek - Spark Resource Optimizer</p>
+          <p class="text-gray-600 m-0">&copy; 2025 Gridatek - Spark Resource Optimizer</p>
           <div class="flex flex-col md:flex-row gap-2 md:gap-6">
             <a
               href="https://github.com/gridatek/spark-resource-optimizer"
