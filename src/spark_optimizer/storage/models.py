@@ -19,6 +19,7 @@ class SparkApplication(Base):  # type: ignore[misc,valid-type]
     start_time = Column(DateTime)
     end_time = Column(DateTime)
     duration_ms = Column(Integer)
+    status = Column(String)  # completed, failed, running
     spark_version = Column(String)
 
     # Resource configuration
@@ -56,6 +57,7 @@ class SparkApplication(Base):  # type: ignore[misc,valid-type]
     # Additional metadata
     tags = Column(JSON)
     environment = Column(JSON)
+    spark_configs = Column(JSON)  # Custom Spark configuration options
 
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

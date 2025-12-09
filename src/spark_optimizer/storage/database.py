@@ -77,6 +77,7 @@ class Database:
                 start_time=job_dict.get("start_time"),
                 end_time=job_dict.get("end_time"),
                 duration_ms=job_dict.get("duration_ms"),
+                status=job_dict.get("status"),
                 spark_version=job_dict.get("spark_version"),
                 executor_cores=config.get("executor_cores")
                 or job_dict.get("executor_cores"),
@@ -113,6 +114,7 @@ class Database:
                 estimated_cost=job_dict.get("estimated_cost"),
                 tags=job_dict.get("tags"),
                 environment=job_dict.get("environment"),
+                spark_configs=job_dict.get("spark_configs"),
             )
             session.add(app)
 

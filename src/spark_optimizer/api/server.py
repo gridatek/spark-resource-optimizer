@@ -233,6 +233,7 @@ def list_jobs():
                         "start_time": job.start_time.isoformat(),
                         "end_time": job.end_time.isoformat() if job.end_time else None,
                         "duration_ms": job.duration_ms,
+                        "status": job.status,
                         "estimated_cost": job.estimated_cost,
                         "configuration": {
                             "num_executors": job.num_executors,
@@ -285,6 +286,7 @@ def get_job(app_id: str):
                 "start_time": job.start_time.isoformat() if job.start_time else None,
                 "end_time": job.end_time.isoformat() if job.end_time else None,
                 "duration_ms": job.duration_ms,
+                "status": job.status,
                 "resource_config": {
                     "num_executors": job.num_executors,
                     "executor_cores": job.executor_cores,
