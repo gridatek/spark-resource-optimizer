@@ -7,6 +7,20 @@ import numpy as np
 class JobSimilarityCalculator:
     """Calculate similarity between Spark jobs."""
 
+    # Feature names for vector representation
+    FEATURE_NAMES = [
+        "input_bytes",
+        "output_bytes",
+        "shuffle_read_bytes",
+        "shuffle_write_bytes",
+        "total_stages",
+        "total_tasks",
+        "num_executors",
+        "executor_cores",
+        "executor_memory_mb",
+        "duration_ms",
+    ]
+
     def __init__(self, weights: Optional[Dict[str, float]] = None):
         """Initialize similarity calculator.
 
@@ -46,6 +60,12 @@ class JobSimilarityCalculator:
         # Input size similarity
         if "input_bytes" in job1 and "input_bytes" in job2:
             input_sim = self._size_similarity(job1["input_bytes"], job2["input_bytes"])
+            weight = self.weights["input_size"]
+            scores.append(input_sim * weight)
+            total_weight += weight
+        elif "input_size_bytes" in job1 and "input_bytes" in job2:
+            # Handle job_requirements format
+            input_sim = self._size_similarity(job1["input_size_bytes"], job2["input_bytes"])
             weight = self.weights["input_size"]
             scores.append(input_sim * weight)
             total_weight += weight
@@ -217,7 +237,6 @@ class JobSimilarityCalculator:
         Returns:
             List of (job, similarity_score) tuples, sorted by similarity
         """
-        # TODO: Implement similarity ranking
         similarities = []
         for candidate in candidate_jobs:
             score = self.calculate_similarity(target_job, candidate)
@@ -234,11 +253,145 @@ class JobSimilarityCalculator:
             job: Job data dictionary
 
         Returns:
-            NumPy array of features
+            NumPy array of normalized features
         """
-        # TODO: Implement feature extraction
-        # - Normalize features
-        # - Handle missing values
-        # - Create fixed-length vector
-        features: List[float] = []
-        return np.array(features)
+        # Extract raw features
+        features = []
+
+        # Size features (log-scaled to handle large values)
+        input_bytes = job.get("input_bytes", job.get("input_size_bytes", 0))
+        output_bytes = job.get("output_bytes", 0)
+        shuffle_read = job.get("shuffle_read_bytes", 0)
+        shuffle_write = job.get("shuffle_write_bytes", 0)
+
+        # Use log1p to handle zeros and normalize large values
+        features.append(np.log1p(input_bytes))
+        features.append(np.log1p(output_bytes))
+        features.append(np.log1p(shuffle_read))
+        features.append(np.log1p(shuffle_write))
+
+        # Count features (log-scaled)
+        features.append(np.log1p(job.get("total_stages", 0)))
+        features.append(np.log1p(job.get("total_tasks", 0)))
+
+        # Resource configuration features
+        features.append(np.log1p(job.get("num_executors", 0)))
+        features.append(job.get("executor_cores", 0))
+        features.append(np.log1p(job.get("executor_memory_mb", 0)))
+
+        # Performance feature
+        features.append(np.log1p(job.get("duration_ms", 0)))
+
+        return np.array(features, dtype=np.float64)
+
+    def calculate_cosine_similarity(
+        self, vector1: np.ndarray, vector2: np.ndarray
+    ) -> float:
+        """Calculate cosine similarity between two feature vectors.
+
+        Args:
+            vector1: First feature vector
+            vector2: Second feature vector
+
+        Returns:
+            Cosine similarity score between -1 and 1
+        """
+        if vector1.size == 0 or vector2.size == 0:
+            return 0.0
+
+        norm1 = np.linalg.norm(vector1)
+        norm2 = np.linalg.norm(vector2)
+
+        if norm1 == 0 or norm2 == 0:
+            return 0.0
+
+        return float(np.dot(vector1, vector2) / (norm1 * norm2))
+
+    def calculate_euclidean_distance(
+        self, vector1: np.ndarray, vector2: np.ndarray
+    ) -> float:
+        """Calculate Euclidean distance between two feature vectors.
+
+        Args:
+            vector1: First feature vector
+            vector2: Second feature vector
+
+        Returns:
+            Euclidean distance
+        """
+        if vector1.size == 0 or vector2.size == 0:
+            return float("inf")
+
+        return float(np.linalg.norm(vector1 - vector2))
+
+    def find_similar_jobs_vectorized(
+        self,
+        target_job: Dict,
+        candidate_jobs: List[Dict],
+        top_k: int = 5,
+        method: str = "cosine",
+    ) -> List[Tuple[Dict, float]]:
+        """Find similar jobs using vectorized similarity calculation.
+
+        This method is faster for large candidate sets.
+
+        Args:
+            target_job: Job to find matches for
+            candidate_jobs: List of candidate jobs
+            top_k: Number of top matches to return
+            method: Similarity method - "cosine" or "euclidean"
+
+        Returns:
+            List of (job, similarity_score) tuples
+        """
+        if not candidate_jobs:
+            return []
+
+        # Extract feature vector for target
+        target_vector = self.calculate_feature_vector(target_job)
+
+        # Build feature matrix for candidates
+        candidate_vectors = np.array([
+            self.calculate_feature_vector(job) for job in candidate_jobs
+        ])
+
+        if method == "cosine":
+            # Normalize vectors
+            target_norm = target_vector / (np.linalg.norm(target_vector) + 1e-10)
+            candidate_norms = candidate_vectors / (
+                np.linalg.norm(candidate_vectors, axis=1, keepdims=True) + 1e-10
+            )
+            # Calculate cosine similarities
+            similarities = np.dot(candidate_norms, target_norm)
+
+        elif method == "euclidean":
+            # Calculate Euclidean distances and convert to similarity
+            distances = np.linalg.norm(candidate_vectors - target_vector, axis=1)
+            # Convert distance to similarity (higher is better)
+            similarities = 1 / (1 + distances)
+
+        else:
+            raise ValueError(f"Unknown similarity method: {method}")
+
+        # Get top-k indices
+        top_indices = np.argsort(similarities)[::-1][:top_k]
+
+        # Return jobs with their similarity scores
+        results = [
+            (candidate_jobs[i], float(similarities[i]))
+            for i in top_indices
+        ]
+
+        return results
+
+    def get_feature_importance(self) -> Dict[str, float]:
+        """Get feature importance based on weights.
+
+        Returns:
+            Dictionary mapping feature names to importance scores
+        """
+        total_weight = sum(self.weights.values())
+        return {
+            name: weight / total_weight
+            for name, weight in self.weights.items()
+        }
