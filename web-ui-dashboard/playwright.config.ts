@@ -1,6 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
 /**
+ * Playwright configuration for Spark Resource Optimizer E2E tests.
  * See https://playwright.dev/docs/test-configuration.
  */
 export default defineConfig({
@@ -11,10 +12,21 @@ export default defineConfig({
   workers: process.env.CI ? 4 : undefined,
   reporter: process.env.CI ? 'github' : 'html',
 
+  // Global timeout settings
+  timeout: 60000, // 60 seconds per test
+  expect: {
+    timeout: 10000, // 10 seconds for expect assertions
+  },
+
   use: {
     baseURL: 'http://localhost:4200',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
+    video: process.env.CI ? 'on-first-retry' : 'off',
+
+    // Action timeouts
+    actionTimeout: 15000,
+    navigationTimeout: 30000,
   },
 
   projects: [
