@@ -138,10 +138,7 @@ class TestMLRecommenderTraining:
         recommender = MLRecommender()
 
         # Jobs without resource configuration
-        jobs = [
-            {"input_bytes": 1024**3, "app_name": f"job_{i}"}
-            for i in range(20)
-        ]
+        jobs = [{"input_bytes": 1024**3, "app_name": f"job_{i}"} for i in range(20)]
 
         with pytest.raises(ValueError, match="valid jobs after filtering"):
             recommender.train(jobs)
@@ -414,9 +411,7 @@ class TestMLRecommenderPersistence:
             )
 
             # Predictions should be identical
-            assert (
-                original_rec["configuration"] == loaded_rec["configuration"]
-            )
+            assert original_rec["configuration"] == loaded_rec["configuration"]
 
     def test_load_nonexistent_path(self):
         """Test loading from nonexistent path."""
@@ -585,7 +580,11 @@ class TestMLRecommenderMetrics:
 
         # Create a sample feature vector
         features = recommender._extract_features(
-            {"input_size_bytes": 10 * 1024**3, "job_type": "etl", "priority": "balanced"}
+            {
+                "input_size_bytes": 10 * 1024**3,
+                "job_type": "etl",
+                "priority": "balanced",
+            }
         )
         features_scaled = recommender.scalers["features"].transform(
             features.reshape(1, -1)

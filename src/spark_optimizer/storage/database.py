@@ -78,21 +78,32 @@ class Database:
                 end_time=job_dict.get("end_time"),
                 duration_ms=job_dict.get("duration_ms"),
                 spark_version=job_dict.get("spark_version"),
-                executor_cores=config.get("executor_cores") or job_dict.get("executor_cores"),
+                executor_cores=config.get("executor_cores")
+                or job_dict.get("executor_cores"),
                 executor_memory_mb=executor_memory_mb,
-                num_executors=config.get("num_executors") or job_dict.get("num_executors"),
+                num_executors=config.get("num_executors")
+                or job_dict.get("num_executors"),
                 driver_memory_mb=driver_memory_mb,
                 total_tasks=metrics.get("total_tasks") or job_dict.get("total_tasks"),
-                failed_tasks=metrics.get("failed_tasks") or job_dict.get("failed_tasks"),
-                total_stages=metrics.get("total_stages") or job_dict.get("total_stages"),
-                failed_stages=metrics.get("failed_stages") or job_dict.get("failed_stages"),
+                failed_tasks=metrics.get("failed_tasks")
+                or job_dict.get("failed_tasks"),
+                total_stages=metrics.get("total_stages")
+                or job_dict.get("total_stages"),
+                failed_stages=metrics.get("failed_stages")
+                or job_dict.get("failed_stages"),
                 input_bytes=metrics.get("input_bytes") or job_dict.get("input_bytes"),
-                output_bytes=metrics.get("output_bytes") or job_dict.get("output_bytes"),
-                shuffle_read_bytes=metrics.get("shuffle_read_bytes") or job_dict.get("shuffle_read_bytes"),
-                shuffle_write_bytes=metrics.get("shuffle_write_bytes") or job_dict.get("shuffle_write_bytes"),
-                cpu_time_ms=metrics.get("cpu_time_ms") or job_dict.get("executor_cpu_time"),
-                memory_spilled_bytes=metrics.get("memory_spilled_bytes") or job_dict.get("spill_memory_bytes"),
-                disk_spilled_bytes=metrics.get("disk_spilled_bytes") or job_dict.get("spill_disk_bytes"),
+                output_bytes=metrics.get("output_bytes")
+                or job_dict.get("output_bytes"),
+                shuffle_read_bytes=metrics.get("shuffle_read_bytes")
+                or job_dict.get("shuffle_read_bytes"),
+                shuffle_write_bytes=metrics.get("shuffle_write_bytes")
+                or job_dict.get("shuffle_write_bytes"),
+                cpu_time_ms=metrics.get("cpu_time_ms")
+                or job_dict.get("executor_cpu_time"),
+                memory_spilled_bytes=metrics.get("memory_spilled_bytes")
+                or job_dict.get("spill_memory_bytes"),
+                disk_spilled_bytes=metrics.get("disk_spilled_bytes")
+                or job_dict.get("spill_disk_bytes"),
                 executor_run_time_ms=job_dict.get("executor_run_time"),
                 executor_cpu_time_ms=job_dict.get("executor_cpu_time"),
                 jvm_gc_time_ms=job_dict.get("jvm_gc_time"),

@@ -228,9 +228,9 @@ class MLRecommender(BaseRecommender):
                 job.get(field, 0) > 0 for field in self.TARGET_FIELDS
             )
             # Check if job has input size information
-            has_input_size = job.get("input_bytes", 0) > 0 or job.get(
-                "input_size_bytes", 0
-            ) > 0
+            has_input_size = (
+                job.get("input_bytes", 0) > 0 or job.get("input_size_bytes", 0) > 0
+            )
 
             if has_valid_targets and has_input_size:
                 valid_jobs.append(job)
@@ -302,8 +302,7 @@ class MLRecommender(BaseRecommender):
         job_type_batch = 1.0 if job_type == "batch" else 0.0
         job_type_other = (
             1.0
-            if job_type
-            and job_type not in ["etl", "ml", "streaming", "batch"]
+            if job_type and job_type not in ["etl", "ml", "streaming", "batch"]
             else 0.0
         )
 
@@ -388,8 +387,7 @@ class MLRecommender(BaseRecommender):
         job_type_batch = 1.0 if job_type == "batch" else 0.0
         job_type_other = (
             1.0
-            if job_type
-            and job_type not in ["etl", "ml", "streaming", "batch"]
+            if job_type and job_type not in ["etl", "ml", "streaming", "batch"]
             else 0.0
         )
 
@@ -479,9 +477,7 @@ class MLRecommender(BaseRecommender):
 
         return predictions
 
-    def _apply_constraints(
-        self, predictions: Dict, job_requirements: Dict
-    ) -> Dict:
+    def _apply_constraints(self, predictions: Dict, job_requirements: Dict) -> Dict:
         """Apply SLA and budget constraints to predictions.
 
         Args:
@@ -591,8 +587,7 @@ class MLRecommender(BaseRecommender):
         # Get top K features
         top_indices = np.argsort(importances)[-top_k:][::-1]
         return {
-            self.FEATURE_NAMES[i]: round(float(importances[i]), 4)
-            for i in top_indices
+            self.FEATURE_NAMES[i]: round(float(importances[i]), 4) for i in top_indices
         }
 
     def evaluate(self, test_jobs: List[Dict]) -> Dict:
@@ -725,9 +720,7 @@ class MLRecommender(BaseRecommender):
             if hasattr(model, "feature_importances_"):
                 importance_dict[target_name] = {
                     name: round(float(imp), 4)
-                    for name, imp in zip(
-                        self.FEATURE_NAMES, model.feature_importances_
-                    )
+                    for name, imp in zip(self.FEATURE_NAMES, model.feature_importances_)
                 }
 
         return importance_dict
