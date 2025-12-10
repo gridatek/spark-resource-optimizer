@@ -264,10 +264,10 @@ class CloudPricing:
         """
         provider = provider.lower()
 
-        if provider not in self._instances:
-            return None
-
-        instance = self._instances[provider].get(instance_type)
+        # Try to get from standard pricing first
+        instance = None
+        if provider in self._instances:
+            instance = self._instances[provider].get(instance_type)
 
         if not instance:
             # Check custom pricing

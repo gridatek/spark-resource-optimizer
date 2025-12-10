@@ -91,7 +91,18 @@ def get_recommendation():
         JSON response with recommendations
     """
     try:
-        data = request.get_json()
+        # Handle missing or incorrect Content-Type header
+        try:
+            data = request.get_json(force=False, silent=False)
+        except Exception as json_error:
+            return (
+                jsonify(
+                    {
+                        "error": "Invalid or missing Content-Type header. Expected 'application/json'"
+                    }
+                ),
+                415,
+            )
 
         if not data:
             return jsonify({"error": "Request body is required"}), 400
