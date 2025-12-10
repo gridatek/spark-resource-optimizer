@@ -70,6 +70,9 @@ open htmlcov/index.html
 | `test_collectors/test_event_log_collector.py` | Event log parsing tests | Log parsing, metrics extraction |
 | `test_analyzer/test_similarity.py` | Similarity calculation tests | Job matching, vector similarity |
 | `test_recommender/*.py` | Recommender tests | All recommendation methods |
+| `test_monitoring/*.py` | Monitoring module tests | SparkMonitor, AlertManager, WebSocketServer |
+| `test_tuning/*.py` | Auto-tuning tests | AutoTuner, ConfigAdjuster, FeedbackLoop |
+| `test_cost/*.py` | Cost modeling tests | CostModel, CostOptimizer, CloudPricing |
 
 ## 4. Testing What Currently Works
 
@@ -249,13 +252,101 @@ docker-compose up
 | Unit Tests | Complete | Comprehensive test coverage |
 | Example Scripts | Complete | Working examples |
 
-### Planned Features
+### Recently Implemented Features (v0.2.0)
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Real-time Monitoring | Planned | Streaming job metrics |
-| Auto-tuning | Planned | Automatic configuration adjustment |
-| Advanced Cost Modeling | Planned | Cloud provider cost integration |
+| Real-time Monitoring | Complete | Streaming job metrics, alerts, WebSocket server |
+| Auto-tuning | Complete | Automatic configuration adjustment, feedback loop |
+| Advanced Cost Modeling | Complete | Multi-cloud pricing, cost optimization, instance comparison |
+
+### Testing New Features
+
+#### Real-time Monitoring
+
+```python
+from spark_optimizer.monitoring.monitor import SparkMonitor
+from spark_optimizer.monitoring.alerts import AlertManager, AlertSeverity
+
+# Start monitoring
+monitor = SparkMonitor(poll_interval=5.0)
+monitor.start()
+
+# Add application to monitor
+monitor.add_application("app-123", "my_spark_job")
+
+# Update metrics
+monitor.update_metrics("app-123", {"cpu_usage": 75.0, "memory_usage": 8192.0})
+
+# Set up alerts
+alert_manager = AlertManager()
+alerts = alert_manager.evaluate_metrics("app-123", {"jvm_gc_time_percent": 15.0})
+
+monitor.stop()
+```
+
+#### Auto-tuning
+
+```python
+from spark_optimizer.tuning.auto_tuner import AutoTuner, TuningStrategy
+
+tuner = AutoTuner()
+
+# Start a tuning session
+session = tuner.start_session(
+    app_id="app-123",
+    app_name="my_spark_job",
+    initial_config={"spark.executor.memory": 4096},
+    strategy=TuningStrategy.MODERATE,
+    target_metric="duration"
+)
+
+# Get recommendations based on metrics
+adjustments = tuner.analyze_and_recommend(
+    session.session_id,
+    {"duration": 100.0, "memory_spill_ratio": 0.2}
+)
+
+# Apply and track adjustments
+for adj in adjustments:
+    tuner.apply_adjustment(session.session_id, adj)
+
+# Get best configuration
+best_config = tuner.get_best_config(session.session_id)
+```
+
+#### Cost Modeling
+
+```python
+from spark_optimizer.cost.cost_model import CostModel, InstanceType
+from spark_optimizer.cost.cost_optimizer import CostOptimizer, OptimizationGoal
+from spark_optimizer.cost.cloud_pricing import CloudPricing
+
+# Estimate job cost
+model = CostModel(cloud_provider="aws", region="us-east-1")
+estimate = model.estimate_job_cost(
+    num_executors=10,
+    executor_cores=4,
+    executor_memory_mb=8192,
+    driver_memory_mb=4096,
+    duration_hours=2.0,
+    instance_type=InstanceType.ON_DEMAND
+)
+print(f"Estimated cost: ${estimate.total_cost:.2f}")
+
+# Optimize configuration for cost
+optimizer = CostOptimizer()
+result = optimizer.optimize(
+    current_config={"spark.executor.instances": 20},
+    estimated_duration_hours=2.0,
+    goal=OptimizationGoal.MINIMIZE_COST
+)
+print(f"Savings: ${result.savings:.2f} ({result.savings_percent:.1f}%)")
+
+# Compare cloud providers
+pricing = CloudPricing()
+comparison = pricing.compare_providers(vcpus=4, memory_gb=16)
+```
 
 ## Quick Smoke Test
 
@@ -301,3 +392,6 @@ pytest tests/ -v --tb=short
 | Collectors | 85%+ |
 | Recommenders | 85%+ |
 | Analyzers | 80%+ |
+| Monitoring | 85%+ |
+| Tuning | 85%+ |
+| Cost | 85%+ |

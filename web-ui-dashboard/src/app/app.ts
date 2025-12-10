@@ -25,6 +25,30 @@ import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
               Dashboard
             </a>
             <a
+              routerLink="/monitoring"
+              routerLinkActive="bg-blue-500 text-white"
+              class="flex items-center gap-2 px-6 py-3 rounded-md no-underline text-gray-700 font-medium transition-all hover:bg-gray-100 hover:text-gray-900"
+            >
+              <span class="text-lg">📡</span>
+              Monitoring
+            </a>
+            <a
+              routerLink="/tuning"
+              routerLinkActive="bg-blue-500 text-white"
+              class="flex items-center gap-2 px-6 py-3 rounded-md no-underline text-gray-700 font-medium transition-all hover:bg-gray-100 hover:text-gray-900"
+            >
+              <span class="text-lg">🔧</span>
+              Tuning
+            </a>
+            <a
+              routerLink="/cost"
+              routerLinkActive="bg-blue-500 text-white"
+              class="flex items-center gap-2 px-6 py-3 rounded-md no-underline text-gray-700 font-medium transition-all hover:bg-gray-100 hover:text-gray-900"
+            >
+              <span class="text-lg">💰</span>
+              Cost
+            </a>
+            <a
               routerLink="/analytics"
               routerLinkActive="bg-blue-500 text-white"
               class="flex items-center gap-2 px-6 py-3 rounded-md no-underline text-gray-700 font-medium transition-all hover:bg-gray-100 hover:text-gray-900"
@@ -38,7 +62,7 @@ import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
               class="flex items-center gap-2 px-6 py-3 rounded-md no-underline text-gray-700 font-medium transition-all hover:bg-gray-100 hover:text-gray-900"
             >
               <span class="text-lg">🎯</span>
-              Get Recommendations
+              Recommendations
             </a>
           </nav>
 
@@ -65,6 +89,33 @@ import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
               Dashboard
             </a>
             <a
+              routerLink="/monitoring"
+              routerLinkActive="bg-blue-500 text-white"
+              (click)="toggleMenu()"
+              class="flex items-center gap-2 px-6 py-3 rounded-md no-underline text-gray-700 font-medium transition-all hover:bg-gray-100 hover:text-gray-900 w-full justify-start"
+            >
+              <span class="text-lg">📡</span>
+              Monitoring
+            </a>
+            <a
+              routerLink="/tuning"
+              routerLinkActive="bg-blue-500 text-white"
+              (click)="toggleMenu()"
+              class="flex items-center gap-2 px-6 py-3 rounded-md no-underline text-gray-700 font-medium transition-all hover:bg-gray-100 hover:text-gray-900 w-full justify-start"
+            >
+              <span class="text-lg">🔧</span>
+              Tuning
+            </a>
+            <a
+              routerLink="/cost"
+              routerLinkActive="bg-blue-500 text-white"
+              (click)="toggleMenu()"
+              class="flex items-center gap-2 px-6 py-3 rounded-md no-underline text-gray-700 font-medium transition-all hover:bg-gray-100 hover:text-gray-900 w-full justify-start"
+            >
+              <span class="text-lg">💰</span>
+              Cost
+            </a>
+            <a
               routerLink="/analytics"
               routerLinkActive="bg-blue-500 text-white"
               (click)="toggleMenu()"
@@ -80,7 +131,7 @@ import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
               class="flex items-center gap-2 px-6 py-3 rounded-md no-underline text-gray-700 font-medium transition-all hover:bg-gray-100 hover:text-gray-900 w-full justify-start"
             >
               <span class="text-lg">🎯</span>
-              Get Recommendations
+              Recommendations
             </a>
           </nav>
         }

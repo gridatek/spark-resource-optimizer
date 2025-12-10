@@ -373,6 +373,639 @@ curl http://localhost:8080/analyze/app-20240101-000001
 
 ---
 
+---
+
+## Monitoring Endpoints
+
+### Get Monitored Applications
+
+Get list of currently monitored Spark applications.
+
+**Endpoint**: `GET /monitoring/applications`
+
+**Response**:
+```json
+{
+    "applications": [
+        {
+            "app_id": "app-20241210-001",
+            "app_name": "ETL Pipeline - Sales Data",
+            "status": "running",
+            "progress": 0.65,
+            "active_tasks": 24,
+            "completed_tasks": 156,
+            "failed_tasks": 2,
+            "current_memory_mb": 12288,
+            "current_cpu_percent": 78.5,
+            "executors": 8,
+            "duration_seconds": 1234,
+            "last_updated": "2024-12-10T10:30:00Z"
+        }
+    ],
+    "total": 2
+}
+```
+
+**Example**:
+```bash
+curl http://localhost:8080/monitoring/applications
+```
+
+---
+
+### Get Application Status
+
+Get detailed status of a specific monitored application.
+
+**Endpoint**: `GET /monitoring/applications/{app_id}`
+
+**Path Parameters**:
+- `app_id`: Spark application ID
+
+**Response**:
+```json
+{
+    "app_id": "app-20241210-001",
+    "app_name": "ETL Pipeline - Sales Data",
+    "status": "running",
+    "start_time": "2024-12-10T10:00:00Z",
+    "progress": 0.65,
+    "active_tasks": 24,
+    "completed_tasks": 156,
+    "failed_tasks": 2,
+    "current_memory_mb": 12288,
+    "current_cpu_percent": 78.5,
+    "executors": 8,
+    "metrics": {
+        "gc_time_percent": 8.5,
+        "shuffle_read_mb": 4096,
+        "shuffle_write_mb": 2048
+    }
+}
+```
+
+**Example**:
+```bash
+curl http://localhost:8080/monitoring/applications/app-20241210-001
+```
+
+---
+
+### Get Application Metrics
+
+Get metrics history for a monitored application.
+
+**Endpoint**: `GET /monitoring/applications/{app_id}/metrics`
+
+**Query Parameters**:
+- `metric_names` (optional): Comma-separated list of metric names
+- `since` (optional): Start time (ISO format)
+- `limit` (optional): Maximum data points (default: 100)
+
+**Response**:
+```json
+{
+    "app_id": "app-20241210-001",
+    "metrics": [
+        {
+            "timestamp": "2024-12-10T10:30:00Z",
+            "name": "cpu_percent",
+            "value": 78.5,
+            "labels": {"executor_id": "all"}
+        },
+        {
+            "timestamp": "2024-12-10T10:30:00Z",
+            "name": "memory_used_mb",
+            "value": 12288,
+            "labels": {"executor_id": "all"}
+        }
+    ]
+}
+```
+
+---
+
+### Get Active Alerts
+
+Get active alerts across all monitored applications.
+
+**Endpoint**: `GET /monitoring/alerts`
+
+**Query Parameters**:
+- `severity` (optional): Filter by severity (critical, error, warning, info)
+- `app_id` (optional): Filter by application ID
+- `acknowledged` (optional): Filter by acknowledgment status (true/false)
+
+**Response**:
+```json
+{
+    "alerts": [
+        {
+            "id": "alert-001",
+            "app_id": "app-20241210-001",
+            "severity": "warning",
+            "title": "High GC Time",
+            "message": "GC time is 12.5%, exceeding 10% threshold",
+            "created_at": "2024-12-10T10:25:00Z",
+            "acknowledged": false
+        }
+    ],
+    "total": 1
+}
+```
+
+---
+
+### Acknowledge Alert
+
+Acknowledge an alert.
+
+**Endpoint**: `POST /monitoring/alerts/{alert_id}/acknowledge`
+
+**Response**:
+```json
+{
+    "status": "success",
+    "message": "Alert acknowledged"
+}
+```
+
+---
+
+### WebSocket: Real-Time Updates
+
+Connect to real-time monitoring updates via WebSocket.
+
+**Endpoint**: `WS /monitoring/ws`
+
+**Message Types**:
+
+*Subscribe to application*:
+```json
+{
+    "type": "subscribe",
+    "app_id": "app-20241210-001"
+}
+```
+
+*Metric update (server to client)*:
+```json
+{
+    "type": "metric",
+    "app_id": "app-20241210-001",
+    "timestamp": "2024-12-10T10:30:00Z",
+    "metrics": {
+        "cpu_percent": 78.5,
+        "memory_used_mb": 12288
+    }
+}
+```
+
+*Alert (server to client)*:
+```json
+{
+    "type": "alert",
+    "alert": {
+        "id": "alert-001",
+        "severity": "warning",
+        "title": "High GC Time",
+        "message": "GC time exceeds threshold"
+    }
+}
+```
+
+---
+
+## Auto-Tuning Endpoints
+
+### List Tuning Sessions
+
+Get list of tuning sessions.
+
+**Endpoint**: `GET /tuning/sessions`
+
+**Query Parameters**:
+- `status` (optional): Filter by status (active, paused, completed, failed)
+- `app_id` (optional): Filter by application ID
+- `limit` (optional): Maximum results (default: 50)
+
+**Response**:
+```json
+{
+    "sessions": [
+        {
+            "session_id": "tune-1702234567890",
+            "app_id": "app-20241210-001",
+            "app_name": "ETL Pipeline - Sales Data",
+            "strategy": "moderate",
+            "target_metric": "duration",
+            "status": "active",
+            "iterations": 5,
+            "started_at": "2024-12-10T09:00:00Z",
+            "best_metric_value": 85.2,
+            "adjustments_count": 3
+        }
+    ],
+    "total": 2
+}
+```
+
+---
+
+### Start Tuning Session
+
+Start a new auto-tuning session.
+
+**Endpoint**: `POST /tuning/sessions`
+
+**Request Body**:
+```json
+{
+    "app_id": "app-20241210-001",
+    "strategy": "moderate",
+    "target_metric": "duration",
+    "initial_config": {
+        "spark.executor.instances": 10,
+        "spark.executor.cores": 4,
+        "spark.executor.memory": "8g"
+    },
+    "constraints": {
+        "min_executors": 5,
+        "max_executors": 20,
+        "min_memory_mb": 4096,
+        "max_memory_mb": 16384
+    }
+}
+```
+
+**Parameters**:
+- `app_id` (required): Application ID to tune
+- `strategy` (optional): Tuning strategy - `conservative`, `moderate`, `aggressive` (default: moderate)
+- `target_metric` (optional): Metric to optimize - `duration`, `cost`, `throughput` (default: duration)
+- `initial_config` (optional): Starting configuration
+- `constraints` (optional): Resource constraints
+
+**Response**:
+```json
+{
+    "session_id": "tune-1702234567890",
+    "status": "active",
+    "message": "Tuning session started"
+}
+```
+
+---
+
+### Get Tuning Session
+
+Get details of a specific tuning session.
+
+**Endpoint**: `GET /tuning/sessions/{session_id}`
+
+**Response**:
+```json
+{
+    "session_id": "tune-1702234567890",
+    "app_id": "app-20241210-001",
+    "app_name": "ETL Pipeline",
+    "strategy": "moderate",
+    "target_metric": "duration",
+    "status": "active",
+    "iterations": 5,
+    "started_at": "2024-12-10T09:00:00Z",
+    "initial_config": {
+        "spark.executor.instances": 10,
+        "spark.executor.cores": 4
+    },
+    "current_config": {
+        "spark.executor.instances": 8,
+        "spark.executor.cores": 4,
+        "spark.executor.memory": "12g"
+    },
+    "best_config": {
+        "spark.executor.instances": 8,
+        "spark.executor.memory": "12g"
+    },
+    "best_metric_value": 85.2,
+    "adjustments": [
+        {
+            "parameter": "spark.executor.memory",
+            "old_value": "8g",
+            "new_value": "12g",
+            "reason": "Memory spilling detected",
+            "applied": true,
+            "timestamp": "2024-12-10T09:15:00Z"
+        }
+    ]
+}
+```
+
+---
+
+### Pause/Resume/End Tuning Session
+
+Control a tuning session.
+
+**Endpoint**: `POST /tuning/sessions/{session_id}/{action}`
+
+**Path Parameters**:
+- `session_id`: Session ID
+- `action`: One of `pause`, `resume`, `end`
+
+**Response**:
+```json
+{
+    "status": "success",
+    "session_status": "paused"
+}
+```
+
+---
+
+### Get Session Adjustments
+
+Get adjustments made during a tuning session.
+
+**Endpoint**: `GET /tuning/sessions/{session_id}/adjustments`
+
+**Response**:
+```json
+{
+    "adjustments": [
+        {
+            "parameter": "spark.executor.memory",
+            "old_value": "8g",
+            "new_value": "12g",
+            "reason": "Memory spilling detected (ratio: 0.15)",
+            "applied": true,
+            "timestamp": "2024-12-10T09:15:00Z",
+            "result": "Memory spill reduced by 80%"
+        }
+    ]
+}
+```
+
+---
+
+## Cost Optimization Endpoints
+
+### Estimate Cost
+
+Estimate cost for a Spark configuration.
+
+**Endpoint**: `POST /cost/estimate`
+
+**Request Body**:
+```json
+{
+    "config": {
+        "spark.executor.instances": 10,
+        "spark.executor.cores": 4,
+        "spark.executor.memory": 8192,
+        "spark.driver.memory": 4096
+    },
+    "duration_hours": 2.0,
+    "provider": "aws",
+    "region": "us-east-1"
+}
+```
+
+**Response**:
+```json
+{
+    "total_cost": 12.50,
+    "breakdown": [
+        {
+            "resource_type": "compute",
+            "cost": 8.00,
+            "quantity": 40,
+            "unit": "vCPU-hours"
+        },
+        {
+            "resource_type": "memory",
+            "cost": 4.50,
+            "quantity": 80,
+            "unit": "GB-hours"
+        }
+    ],
+    "instance_type": "m5.xlarge",
+    "cloud_provider": "aws",
+    "pricing_tier": "on_demand"
+}
+```
+
+---
+
+### Optimize Configuration
+
+Optimize a configuration for cost, duration, or balance.
+
+**Endpoint**: `POST /cost/optimize`
+
+**Request Body**:
+```json
+{
+    "config": {
+        "spark.executor.instances": 20,
+        "spark.executor.cores": 4,
+        "spark.executor.memory": 16384
+    },
+    "duration_hours": 2.0,
+    "goal": "minimize_cost",
+    "budget": null,
+    "provider": "aws",
+    "constraints": {
+        "min_executors": 5,
+        "max_executors": 30
+    }
+}
+```
+
+**Parameters**:
+- `config` (required): Current Spark configuration
+- `duration_hours` (required): Estimated job duration
+- `goal` (optional): Optimization goal - `minimize_cost`, `minimize_duration`, `balance`, `budget_constraint`
+- `budget` (optional): Budget limit for budget_constraint goal
+- `provider` (optional): Cloud provider (aws, gcp, azure)
+- `constraints` (optional): Resource constraints
+
+**Response**:
+```json
+{
+    "original_config": {
+        "spark.executor.instances": 20,
+        "spark.executor.cores": 4,
+        "spark.executor.memory": 16384
+    },
+    "optimized_config": {
+        "spark.executor.instances": 12,
+        "spark.executor.cores": 4,
+        "spark.executor.memory": 12288
+    },
+    "original_cost": 25.00,
+    "optimized_cost": 15.50,
+    "savings": 9.50,
+    "savings_percent": 38.0,
+    "recommended_instance": "m5.xlarge",
+    "recommendations": [
+        "Reduce executor count from 20 to 12 for better utilization",
+        "Consider using spot instances for additional 60-70% savings"
+    ],
+    "trade_offs": [
+        "Job duration may increase by 15-20% with fewer executors"
+    ]
+}
+```
+
+---
+
+### Compare Cloud Providers
+
+Compare costs across different cloud providers.
+
+**Endpoint**: `POST /cost/compare-providers`
+
+**Request Body**:
+```json
+{
+    "config": {
+        "spark.executor.instances": 10,
+        "spark.executor.cores": 4,
+        "spark.executor.memory": 8192
+    },
+    "duration_hours": 2.0,
+    "providers": ["aws", "gcp", "azure"]
+}
+```
+
+**Response**:
+```json
+{
+    "comparisons": [
+        {
+            "provider": "gcp",
+            "instance_type": "n1-standard-4",
+            "vcpus": 4,
+            "memory_gb": 15,
+            "hourly_price": 0.190,
+            "total_cost": 3.80
+        },
+        {
+            "provider": "aws",
+            "instance_type": "m5.xlarge",
+            "vcpus": 4,
+            "memory_gb": 16,
+            "hourly_price": 0.192,
+            "total_cost": 3.84
+        },
+        {
+            "provider": "azure",
+            "instance_type": "Standard_D4s_v3",
+            "vcpus": 4,
+            "memory_gb": 16,
+            "hourly_price": 0.192,
+            "total_cost": 3.84
+        }
+    ],
+    "cheapest": "gcp",
+    "savings_vs_most_expensive": 0.04
+}
+```
+
+---
+
+### Get Spot Strategy Recommendation
+
+Get recommendations for using spot/preemptible instances.
+
+**Endpoint**: `POST /cost/spot-strategy`
+
+**Request Body**:
+```json
+{
+    "config": {
+        "spark.executor.instances": 10,
+        "spark.executor.cores": 4,
+        "spark.executor.memory": 8192
+    },
+    "duration_hours": 2.0,
+    "provider": "aws",
+    "fault_tolerance": 0.8
+}
+```
+
+**Parameters**:
+- `fault_tolerance`: How tolerant the job is to interruption (0.0-1.0)
+
+**Response**:
+```json
+{
+    "strategy": "full_spot",
+    "on_demand_cost": 12.50,
+    "spot_cost": 3.75,
+    "expected_cost": 4.00,
+    "expected_savings": 8.50,
+    "interruption_probability": 0.05,
+    "recommendation": "Job is highly fault-tolerant. Use full spot instances for 68% savings."
+}
+```
+
+---
+
+### Get Cost-Duration Frontier
+
+Get cost-duration trade-off options.
+
+**Endpoint**: `POST /cost/frontier`
+
+**Request Body**:
+```json
+{
+    "config": {
+        "spark.executor.instances": 10,
+        "spark.executor.cores": 4,
+        "spark.executor.memory": 8192
+    },
+    "base_duration_hours": 2.0,
+    "num_points": 5
+}
+```
+
+**Response**:
+```json
+{
+    "frontier": [
+        {
+            "config": {"spark.executor.instances": 5},
+            "cost": 6.25,
+            "estimated_duration_hours": 3.5
+        },
+        {
+            "config": {"spark.executor.instances": 8},
+            "cost": 10.00,
+            "estimated_duration_hours": 2.3
+        },
+        {
+            "config": {"spark.executor.instances": 10},
+            "cost": 12.50,
+            "estimated_duration_hours": 2.0
+        },
+        {
+            "config": {"spark.executor.instances": 15},
+            "cost": 18.75,
+            "estimated_duration_hours": 1.5
+        },
+        {
+            "config": {"spark.executor.instances": 20},
+            "cost": 25.00,
+            "estimated_duration_hours": 1.2
+        }
+    ]
+}
+```
+
+---
+
 #### Submit Feedback
 
 Submit feedback on a recommendation to improve future predictions.
