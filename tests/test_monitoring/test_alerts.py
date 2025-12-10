@@ -640,7 +640,11 @@ class TestDefaultAlertRules:
         alerts = manager.evaluate_metrics("app-1", {"memory_spill_ratio": 0.2})
 
         assert len(alerts) >= 1
-        spill_alerts = [a for a in alerts if "spill" in a.title.lower() or "memory" in a.title.lower()]
+        spill_alerts = [
+            a
+            for a in alerts
+            if "spill" in a.title.lower() or "memory" in a.title.lower()
+        ]
         assert len(spill_alerts) >= 1
 
     def test_task_failure_rule(self):

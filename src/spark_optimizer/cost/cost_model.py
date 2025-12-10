@@ -188,7 +188,11 @@ class CostModel:
                 resource_type="compute",
                 quantity=total_cores,
                 unit="vCPU-hours",
-                unit_price=compute_cost / (total_cores * duration_hours) if duration_hours > 0 else 0,
+                unit_price=(
+                    compute_cost / (total_cores * duration_hours)
+                    if duration_hours > 0
+                    else 0
+                ),
                 total_cost=compute_cost,
                 duration_hours=duration_hours,
             )
@@ -196,7 +200,9 @@ class CostModel:
         total_cost += compute_cost
 
         # Calculate memory cost
-        total_memory_gb = ((num_executors * executor_memory_mb) + driver_memory_mb) / 1024
+        total_memory_gb = (
+            (num_executors * executor_memory_mb) + driver_memory_mb
+        ) / 1024
         memory_cost = self._calculate_memory_cost(
             total_memory_gb, duration_hours, instance_type
         )
@@ -205,7 +211,11 @@ class CostModel:
                 resource_type="memory",
                 quantity=total_memory_gb,
                 unit="GB-hours",
-                unit_price=memory_cost / (total_memory_gb * duration_hours) if duration_hours > 0 else 0,
+                unit_price=(
+                    memory_cost / (total_memory_gb * duration_hours)
+                    if duration_hours > 0
+                    else 0
+                ),
                 total_cost=memory_cost,
                 duration_hours=duration_hours,
             )
@@ -213,7 +223,7 @@ class CostModel:
         total_cost += memory_cost
 
         # Calculate storage cost (ephemeral for shuffle)
-        shuffle_gb = shuffle_bytes / (1024 ** 3)
+        shuffle_gb = shuffle_bytes / (1024**3)
         if shuffle_gb > 0:
             storage_cost = self._calculate_storage_cost(shuffle_gb, duration_hours)
             breakdown.append(
@@ -221,7 +231,11 @@ class CostModel:
                     resource_type="storage",
                     quantity=shuffle_gb,
                     unit="GB-hours",
-                    unit_price=storage_cost / (shuffle_gb * duration_hours) if duration_hours > 0 else 0,
+                    unit_price=(
+                        storage_cost / (shuffle_gb * duration_hours)
+                        if duration_hours > 0
+                        else 0
+                    ),
                     total_cost=storage_cost,
                     duration_hours=duration_hours,
                 )
@@ -229,7 +243,7 @@ class CostModel:
             total_cost += storage_cost
 
         # Calculate network cost
-        total_network_gb = (input_bytes + output_bytes + shuffle_bytes) / (1024 ** 3)
+        total_network_gb = (input_bytes + output_bytes + shuffle_bytes) / (1024**3)
         if total_network_gb > 0:
             network_cost = self._calculate_network_cost(total_network_gb)
             breakdown.append(
@@ -237,7 +251,9 @@ class CostModel:
                     resource_type="network",
                     quantity=total_network_gb,
                     unit="GB",
-                    unit_price=network_cost / total_network_gb if total_network_gb > 0 else 0,
+                    unit_price=(
+                        network_cost / total_network_gb if total_network_gb > 0 else 0
+                    ),
                     total_cost=network_cost,
                     duration_hours=0,  # Network is not time-based
                 )
@@ -245,23 +261,54 @@ class CostModel:
             total_cost += network_cost
 
         # Calculate potential savings
-        spot_cost = self.estimate_job_cost(
-            num_executors, executor_cores, executor_memory_mb, driver_memory_mb,
-            duration_hours, InstanceType.SPOT, shuffle_bytes, input_bytes, output_bytes
-        ).total_cost if instance_type != InstanceType.SPOT else total_cost
+        spot_cost = (
+            self.estimate_job_cost(
+                num_executors,
+                executor_cores,
+                executor_memory_mb,
+                driver_memory_mb,
+                duration_hours,
+                InstanceType.SPOT,
+                shuffle_bytes,
+                input_bytes,
+                output_bytes,
+            ).total_cost
+            if instance_type != InstanceType.SPOT
+            else total_cost
+        )
 
-        reserved_cost = self.estimate_job_cost(
-            num_executors, executor_cores, executor_memory_mb, driver_memory_mb,
-            duration_hours, InstanceType.RESERVED, shuffle_bytes, input_bytes, output_bytes
-        ).total_cost if instance_type != InstanceType.RESERVED else total_cost
+        reserved_cost = (
+            self.estimate_job_cost(
+                num_executors,
+                executor_cores,
+                executor_memory_mb,
+                driver_memory_mb,
+                duration_hours,
+                InstanceType.RESERVED,
+                shuffle_bytes,
+                input_bytes,
+                output_bytes,
+            ).total_cost
+            if instance_type != InstanceType.RESERVED
+            else total_cost
+        )
 
-        spot_savings = total_cost - spot_cost if instance_type == InstanceType.ON_DEMAND else 0
-        reserved_savings = total_cost - reserved_cost if instance_type == InstanceType.ON_DEMAND else 0
+        spot_savings = (
+            total_cost - spot_cost if instance_type == InstanceType.ON_DEMAND else 0
+        )
+        reserved_savings = (
+            total_cost - reserved_cost if instance_type == InstanceType.ON_DEMAND else 0
+        )
 
         # Generate recommendations
         recommendations = self._generate_recommendations(
-            total_cost, spot_savings, reserved_savings, duration_hours,
-            num_executors, executor_memory_mb, shuffle_bytes
+            total_cost,
+            spot_savings,
+            reserved_savings,
+            duration_hours,
+            num_executors,
+            executor_memory_mb,
+            shuffle_bytes,
         )
 
         return CostEstimate(
@@ -300,9 +347,9 @@ class CostModel:
         driver_memory_mb = config.get("spark.driver.memory", 2048)
 
         # Estimate shuffle as 2x input for typical jobs
-        shuffle_bytes = int(data_size_gb * 2 * 1024 ** 3)
-        input_bytes = int(data_size_gb * 1024 ** 3)
-        output_bytes = int(data_size_gb * 0.5 * 1024 ** 3)  # Typical output ratio
+        shuffle_bytes = int(data_size_gb * 2 * 1024**3)
+        input_bytes = int(data_size_gb * 1024**3)
+        output_bytes = int(data_size_gb * 0.5 * 1024**3)  # Typical output ratio
 
         return self.estimate_job_cost(
             num_executors=num_executors,
@@ -338,7 +385,9 @@ class CostModel:
             executor_memory_mb=historical_job.get("executor_memory_mb", 4096),
             driver_memory_mb=historical_job.get("driver_memory_mb", 2048),
             duration_hours=duration_hours,
-            shuffle_bytes=int(historical_job.get("shuffle_write_bytes", 0) * scale_factor),
+            shuffle_bytes=int(
+                historical_job.get("shuffle_write_bytes", 0) * scale_factor
+            ),
             input_bytes=int(historical_job.get("input_bytes", 0) * scale_factor),
             output_bytes=int(historical_job.get("output_bytes", 0) * scale_factor),
         )
@@ -361,9 +410,15 @@ class CostModel:
         """
         base_price = self._pricing["compute"]["on_demand"]
 
-        if instance_type == InstanceType.SPOT or instance_type == InstanceType.PREEMPTIBLE:
+        if (
+            instance_type == InstanceType.SPOT
+            or instance_type == InstanceType.PREEMPTIBLE
+        ):
             price = base_price * self.SPOT_DISCOUNTS.get(self._cloud_provider, 0.3)
-        elif instance_type == InstanceType.RESERVED or instance_type == InstanceType.SAVINGS_PLAN:
+        elif (
+            instance_type == InstanceType.RESERVED
+            or instance_type == InstanceType.SAVINGS_PLAN
+        ):
             price = base_price * self.RESERVED_DISCOUNTS.get(self._cloud_provider, 0.6)
         else:
             price = base_price
@@ -388,9 +443,15 @@ class CostModel:
         """
         base_price = self._pricing["memory"]["on_demand"]
 
-        if instance_type == InstanceType.SPOT or instance_type == InstanceType.PREEMPTIBLE:
+        if (
+            instance_type == InstanceType.SPOT
+            or instance_type == InstanceType.PREEMPTIBLE
+        ):
             price = base_price * self.SPOT_DISCOUNTS.get(self._cloud_provider, 0.3)
-        elif instance_type == InstanceType.RESERVED or instance_type == InstanceType.SAVINGS_PLAN:
+        elif (
+            instance_type == InstanceType.RESERVED
+            or instance_type == InstanceType.SAVINGS_PLAN
+        ):
             price = base_price * self.RESERVED_DISCOUNTS.get(self._cloud_provider, 0.6)
         else:
             price = base_price
@@ -479,7 +540,7 @@ class CostModel:
             )
 
         # Shuffle optimization
-        shuffle_gb = shuffle_bytes / (1024 ** 3)
+        shuffle_gb = shuffle_bytes / (1024**3)
         if shuffle_gb > 10:
             recommendations.append(
                 f"High shuffle volume ({shuffle_gb:.1f} GB). Consider optimizing partitioning"

@@ -62,9 +62,7 @@ class SparkApplicationRepository:
             .all()
         )
 
-    def search_similar(
-        self, criteria: Dict, limit: int = 10
-    ) -> List[SparkApplication]:
+    def search_similar(self, criteria: Dict, limit: int = 10) -> List[SparkApplication]:
         """Search for similar applications based on criteria.
 
         Supports multiple search criteria for finding similar jobs:
@@ -88,9 +86,7 @@ class SparkApplicationRepository:
         # Filter by application name pattern
         if "app_name_pattern" in criteria:
             pattern = criteria["app_name_pattern"]
-            query = query.filter(
-                SparkApplication.app_name.ilike(f"%{pattern}%")
-            )
+            query = query.filter(SparkApplication.app_name.ilike(f"%{pattern}%"))
 
         # Filter by input size range
         if "input_size_range" in criteria:
@@ -148,7 +144,10 @@ class SparkApplicationRepository:
             # Only include jobs where (total_tasks - failed_tasks) / total_tasks >= min_rate
             query = query.filter(
                 SparkApplication.total_tasks > 0,
-                (SparkApplication.total_tasks - func.coalesce(SparkApplication.failed_tasks, 0))
+                (
+                    SparkApplication.total_tasks
+                    - func.coalesce(SparkApplication.failed_tasks, 0)
+                )
                 >= SparkApplication.total_tasks * min_rate,
             )
 
@@ -160,7 +159,9 @@ class SparkApplicationRepository:
 
         # Filter by cluster type
         if "cluster_type" in criteria:
-            query = query.filter(SparkApplication.cluster_type == criteria["cluster_type"])
+            query = query.filter(
+                SparkApplication.cluster_type == criteria["cluster_type"]
+            )
 
         # Filter by Spark version
         if "spark_version" in criteria:
@@ -172,9 +173,7 @@ class SparkApplicationRepository:
         if criteria.get("order_by") == "input_size" and "input_bytes" in criteria:
             # Order by closest input size
             target = criteria["input_bytes"]
-            query = query.order_by(
-                func.abs(SparkApplication.input_bytes - target)
-            )
+            query = query.order_by(func.abs(SparkApplication.input_bytes - target))
         else:
             # Default: order by most recent
             query = query.order_by(SparkApplication.end_time.desc())
@@ -250,7 +249,7 @@ class SparkApplicationRepository:
             for key, value in updates.items():
                 if hasattr(app, key):
                     setattr(app, key, value)
-            app.updated_at = datetime.utcnow()
+            app.updated_at = datetime.utcnow()  # type: ignore[assignment]
             self.session.flush()
         return app
 
@@ -355,7 +354,7 @@ class JobRecommendationRepository:
         """
         recommendation = self.get_by_id(recommendation_id)
         if recommendation:
-            recommendation.used_at = datetime.utcnow()
+            recommendation.used_at = datetime.utcnow()  # type: ignore[assignment]
             self.session.flush()
 
     def add_feedback(self, recommendation_id: int, score: float):
@@ -367,7 +366,7 @@ class JobRecommendationRepository:
         """
         recommendation = self.get_by_id(recommendation_id)
         if recommendation:
-            recommendation.feedback_score = score
+            recommendation.feedback_score = score  # type: ignore[assignment]
             self.session.flush()
 
     def get_recent_recommendations(
@@ -387,11 +386,7 @@ class JobRecommendationRepository:
         if with_feedback:
             query = query.filter(JobRecommendation.feedback_score.isnot(None))
 
-        return (
-            query.order_by(JobRecommendation.created_at.desc())
-            .limit(limit)
-            .all()
-        )
+        return query.order_by(JobRecommendation.created_at.desc()).limit(limit).all()
 
     def get_average_feedback(self) -> float:
         """Get average feedback score across all recommendations.

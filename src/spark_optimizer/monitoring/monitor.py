@@ -314,7 +314,9 @@ class SparkMonitor:
 
             # Update duration
             if app.start_time:
-                app.duration_seconds = (datetime.utcnow() - app.start_time).total_seconds()
+                app.duration_seconds = (
+                    datetime.utcnow() - app.start_time
+                ).total_seconds()
 
             app.last_updated = datetime.utcnow()
 
@@ -426,7 +428,11 @@ class SparkMonitor:
                         latest = attempts[-1]
                         self.update_status(
                             app_id,
-                            status="running" if not latest.get("completed") else "completed",
+                            status=(
+                                "running"
+                                if not latest.get("completed")
+                                else "completed"
+                            ),
                         )
 
         except ImportError:

@@ -173,7 +173,9 @@ class TestAPIRoutes:
 
         mock_query = MagicMock()
         mock_query.count.return_value = 0
-        mock_query.order_by.return_value.offset.return_value.limit.return_value.all.return_value = []
+        mock_query.order_by.return_value.offset.return_value.limit.return_value.all.return_value = (
+            []
+        )
         mock_session.query.return_value = mock_query
 
         response = client.get("/api/jobs")
@@ -303,10 +305,15 @@ class TestAPIRoutes:
         assert response.status_code == 400
         data = json.loads(response.data)
         assert "error" in data
-        assert "unknown_source" in data["error"].lower() or "unknown" in data["error"].lower()
+        assert (
+            "unknown_source" in data["error"].lower()
+            or "unknown" in data["error"].lower()
+        )
 
     @patch("spark_optimizer.api.routes.JobAnalyzer")
-    def test_analyze_job_success(self, mock_analyzer_class, client, mock_db, sample_spark_application):
+    def test_analyze_job_success(
+        self, mock_analyzer_class, client, mock_db, sample_spark_application
+    ):
         """Test analyzing a job returns analysis results."""
         mock_session = MagicMock()
         mock_db.get_session.return_value.__enter__.return_value = mock_session
@@ -332,7 +339,9 @@ class TestAPIRoutes:
             "health_score": 75.0,
         }
 
-        with patch("spark_optimizer.api.routes.get_analyzer", return_value=mock_analyzer):
+        with patch(
+            "spark_optimizer.api.routes.get_analyzer", return_value=mock_analyzer
+        ):
             response = client.get("/api/analyze/app-test-123")
 
         assert response.status_code == 200

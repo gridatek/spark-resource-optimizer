@@ -295,7 +295,11 @@ class TestEventLogCollector:
     def test_parse_log_without_app_end(self, sample_spark_events):
         """Test parsing log without application end event."""
         # Remove app end event
-        events = [e for e in sample_spark_events if e["Event"] != "SparkListenerApplicationEnd"]
+        events = [
+            e
+            for e in sample_spark_events
+            if e["Event"] != "SparkListenerApplicationEnd"
+        ]
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".log", delete=False) as f:
             for event in events:
@@ -347,21 +351,23 @@ class TestEventLogCollector:
         """Test handling failed task events."""
         events = sample_spark_events.copy()
         # Add a failed task
-        events.append({
-            "Event": "SparkListenerTaskEnd",
-            "Task Info": {"Task ID": 2, "Successful": False},
-            "Task Metrics": {
-                "Input Metrics": {"Bytes Read": 0},
-                "Output Metrics": {"Bytes Written": 0},
-                "Shuffle Read Metrics": {"Total Bytes Read": 0},
-                "Shuffle Write Metrics": {"Bytes Written": 0},
-                "Executor Run Time": 1000,
-                "Executor CPU Time": 800,
-                "JVM GC Time": 50,
-                "Memory Bytes Spilled": 0,
-                "Disk Bytes Spilled": 0,
-            },
-        })
+        events.append(
+            {
+                "Event": "SparkListenerTaskEnd",
+                "Task Info": {"Task ID": 2, "Successful": False},
+                "Task Metrics": {
+                    "Input Metrics": {"Bytes Read": 0},
+                    "Output Metrics": {"Bytes Written": 0},
+                    "Shuffle Read Metrics": {"Total Bytes Read": 0},
+                    "Shuffle Write Metrics": {"Bytes Written": 0},
+                    "Executor Run Time": 1000,
+                    "Executor CPU Time": 800,
+                    "JVM GC Time": 50,
+                    "Memory Bytes Spilled": 0,
+                    "Disk Bytes Spilled": 0,
+                },
+            }
+        )
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".log", delete=False) as f:
             for event in events:

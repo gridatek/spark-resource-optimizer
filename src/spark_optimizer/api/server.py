@@ -86,6 +86,7 @@ def init_app(
         app.register_blueprint(auth_bp, url_prefix="/api/v1/auth")
         # Create auth tables
         from spark_optimizer.auth.models import User, RefreshToken
+
         User.__table__.create(db.engine, checkfirst=True)
         RefreshToken.__table__.create(db.engine, checkfirst=True)
         logger.info("Authentication enabled")
@@ -874,9 +875,13 @@ def run_server(
     logger.info(f"Starting Spark Resource Optimizer API on {host}:{port}")
     logger.info("Available features:")
     logger.info(f"  - Authentication: {'enabled' if enable_auth else 'disabled'}")
-    logger.info(f"  - Real-time monitoring: {'enabled' if enable_monitoring else 'disabled'}")
+    logger.info(
+        f"  - Real-time monitoring: {'enabled' if enable_monitoring else 'disabled'}"
+    )
     logger.info(f"  - Auto-tuning: {'enabled' if enable_tuning else 'disabled'}")
-    logger.info(f"  - Cost modeling: {'enabled' if enable_cost_modeling else 'disabled'}")
+    logger.info(
+        f"  - Cost modeling: {'enabled' if enable_cost_modeling else 'disabled'}"
+    )
 
     try:
         app.run(host=host, port=port, debug=debug)

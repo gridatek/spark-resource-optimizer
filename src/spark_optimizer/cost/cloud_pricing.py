@@ -81,44 +81,122 @@ class CloudPricing:
 
     # Sample pricing data (representative, not exhaustive)
     AWS_INSTANCES = {
-        "m5.large": InstancePricing("m5.large", "aws", "us-east-1", 2, 8, 0.096, PricingTier.ON_DEMAND),
-        "m5.xlarge": InstancePricing("m5.xlarge", "aws", "us-east-1", 4, 16, 0.192, PricingTier.ON_DEMAND),
-        "m5.2xlarge": InstancePricing("m5.2xlarge", "aws", "us-east-1", 8, 32, 0.384, PricingTier.ON_DEMAND),
-        "m5.4xlarge": InstancePricing("m5.4xlarge", "aws", "us-east-1", 16, 64, 0.768, PricingTier.ON_DEMAND),
-        "r5.large": InstancePricing("r5.large", "aws", "us-east-1", 2, 16, 0.126, PricingTier.ON_DEMAND),
-        "r5.xlarge": InstancePricing("r5.xlarge", "aws", "us-east-1", 4, 32, 0.252, PricingTier.ON_DEMAND),
-        "r5.2xlarge": InstancePricing("r5.2xlarge", "aws", "us-east-1", 8, 64, 0.504, PricingTier.ON_DEMAND),
-        "c5.large": InstancePricing("c5.large", "aws", "us-east-1", 2, 4, 0.085, PricingTier.ON_DEMAND),
-        "c5.xlarge": InstancePricing("c5.xlarge", "aws", "us-east-1", 4, 8, 0.170, PricingTier.ON_DEMAND),
-        "c5.2xlarge": InstancePricing("c5.2xlarge", "aws", "us-east-1", 8, 16, 0.340, PricingTier.ON_DEMAND),
-        "i3.xlarge": InstancePricing("i3.xlarge", "aws", "us-east-1", 4, 30.5, 0.312, PricingTier.ON_DEMAND, local_storage_gb=950),
-        "i3.2xlarge": InstancePricing("i3.2xlarge", "aws", "us-east-1", 8, 61, 0.624, PricingTier.ON_DEMAND, local_storage_gb=1900),
+        "m5.large": InstancePricing(
+            "m5.large", "aws", "us-east-1", 2, 8, 0.096, PricingTier.ON_DEMAND
+        ),
+        "m5.xlarge": InstancePricing(
+            "m5.xlarge", "aws", "us-east-1", 4, 16, 0.192, PricingTier.ON_DEMAND
+        ),
+        "m5.2xlarge": InstancePricing(
+            "m5.2xlarge", "aws", "us-east-1", 8, 32, 0.384, PricingTier.ON_DEMAND
+        ),
+        "m5.4xlarge": InstancePricing(
+            "m5.4xlarge", "aws", "us-east-1", 16, 64, 0.768, PricingTier.ON_DEMAND
+        ),
+        "r5.large": InstancePricing(
+            "r5.large", "aws", "us-east-1", 2, 16, 0.126, PricingTier.ON_DEMAND
+        ),
+        "r5.xlarge": InstancePricing(
+            "r5.xlarge", "aws", "us-east-1", 4, 32, 0.252, PricingTier.ON_DEMAND
+        ),
+        "r5.2xlarge": InstancePricing(
+            "r5.2xlarge", "aws", "us-east-1", 8, 64, 0.504, PricingTier.ON_DEMAND
+        ),
+        "c5.large": InstancePricing(
+            "c5.large", "aws", "us-east-1", 2, 4, 0.085, PricingTier.ON_DEMAND
+        ),
+        "c5.xlarge": InstancePricing(
+            "c5.xlarge", "aws", "us-east-1", 4, 8, 0.170, PricingTier.ON_DEMAND
+        ),
+        "c5.2xlarge": InstancePricing(
+            "c5.2xlarge", "aws", "us-east-1", 8, 16, 0.340, PricingTier.ON_DEMAND
+        ),
+        "i3.xlarge": InstancePricing(
+            "i3.xlarge",
+            "aws",
+            "us-east-1",
+            4,
+            30.5,
+            0.312,
+            PricingTier.ON_DEMAND,
+            local_storage_gb=950,
+        ),
+        "i3.2xlarge": InstancePricing(
+            "i3.2xlarge",
+            "aws",
+            "us-east-1",
+            8,
+            61,
+            0.624,
+            PricingTier.ON_DEMAND,
+            local_storage_gb=1900,
+        ),
     }
 
     GCP_INSTANCES = {
-        "n1-standard-2": InstancePricing("n1-standard-2", "gcp", "us-central1", 2, 7.5, 0.095, PricingTier.ON_DEMAND),
-        "n1-standard-4": InstancePricing("n1-standard-4", "gcp", "us-central1", 4, 15, 0.190, PricingTier.ON_DEMAND),
-        "n1-standard-8": InstancePricing("n1-standard-8", "gcp", "us-central1", 8, 30, 0.380, PricingTier.ON_DEMAND),
-        "n1-standard-16": InstancePricing("n1-standard-16", "gcp", "us-central1", 16, 60, 0.760, PricingTier.ON_DEMAND),
-        "n1-highmem-2": InstancePricing("n1-highmem-2", "gcp", "us-central1", 2, 13, 0.118, PricingTier.ON_DEMAND),
-        "n1-highmem-4": InstancePricing("n1-highmem-4", "gcp", "us-central1", 4, 26, 0.237, PricingTier.ON_DEMAND),
-        "n1-highmem-8": InstancePricing("n1-highmem-8", "gcp", "us-central1", 8, 52, 0.473, PricingTier.ON_DEMAND),
-        "n1-highcpu-4": InstancePricing("n1-highcpu-4", "gcp", "us-central1", 4, 3.6, 0.142, PricingTier.ON_DEMAND),
-        "n1-highcpu-8": InstancePricing("n1-highcpu-8", "gcp", "us-central1", 8, 7.2, 0.284, PricingTier.ON_DEMAND),
-        "n2-standard-4": InstancePricing("n2-standard-4", "gcp", "us-central1", 4, 16, 0.194, PricingTier.ON_DEMAND),
-        "n2-standard-8": InstancePricing("n2-standard-8", "gcp", "us-central1", 8, 32, 0.388, PricingTier.ON_DEMAND),
+        "n1-standard-2": InstancePricing(
+            "n1-standard-2", "gcp", "us-central1", 2, 7.5, 0.095, PricingTier.ON_DEMAND
+        ),
+        "n1-standard-4": InstancePricing(
+            "n1-standard-4", "gcp", "us-central1", 4, 15, 0.190, PricingTier.ON_DEMAND
+        ),
+        "n1-standard-8": InstancePricing(
+            "n1-standard-8", "gcp", "us-central1", 8, 30, 0.380, PricingTier.ON_DEMAND
+        ),
+        "n1-standard-16": InstancePricing(
+            "n1-standard-16", "gcp", "us-central1", 16, 60, 0.760, PricingTier.ON_DEMAND
+        ),
+        "n1-highmem-2": InstancePricing(
+            "n1-highmem-2", "gcp", "us-central1", 2, 13, 0.118, PricingTier.ON_DEMAND
+        ),
+        "n1-highmem-4": InstancePricing(
+            "n1-highmem-4", "gcp", "us-central1", 4, 26, 0.237, PricingTier.ON_DEMAND
+        ),
+        "n1-highmem-8": InstancePricing(
+            "n1-highmem-8", "gcp", "us-central1", 8, 52, 0.473, PricingTier.ON_DEMAND
+        ),
+        "n1-highcpu-4": InstancePricing(
+            "n1-highcpu-4", "gcp", "us-central1", 4, 3.6, 0.142, PricingTier.ON_DEMAND
+        ),
+        "n1-highcpu-8": InstancePricing(
+            "n1-highcpu-8", "gcp", "us-central1", 8, 7.2, 0.284, PricingTier.ON_DEMAND
+        ),
+        "n2-standard-4": InstancePricing(
+            "n2-standard-4", "gcp", "us-central1", 4, 16, 0.194, PricingTier.ON_DEMAND
+        ),
+        "n2-standard-8": InstancePricing(
+            "n2-standard-8", "gcp", "us-central1", 8, 32, 0.388, PricingTier.ON_DEMAND
+        ),
     }
 
     AZURE_INSTANCES = {
-        "Standard_D2s_v3": InstancePricing("Standard_D2s_v3", "azure", "eastus", 2, 8, 0.096, PricingTier.ON_DEMAND),
-        "Standard_D4s_v3": InstancePricing("Standard_D4s_v3", "azure", "eastus", 4, 16, 0.192, PricingTier.ON_DEMAND),
-        "Standard_D8s_v3": InstancePricing("Standard_D8s_v3", "azure", "eastus", 8, 32, 0.384, PricingTier.ON_DEMAND),
-        "Standard_D16s_v3": InstancePricing("Standard_D16s_v3", "azure", "eastus", 16, 64, 0.768, PricingTier.ON_DEMAND),
-        "Standard_E2s_v3": InstancePricing("Standard_E2s_v3", "azure", "eastus", 2, 16, 0.126, PricingTier.ON_DEMAND),
-        "Standard_E4s_v3": InstancePricing("Standard_E4s_v3", "azure", "eastus", 4, 32, 0.252, PricingTier.ON_DEMAND),
-        "Standard_E8s_v3": InstancePricing("Standard_E8s_v3", "azure", "eastus", 8, 64, 0.504, PricingTier.ON_DEMAND),
-        "Standard_F4s_v2": InstancePricing("Standard_F4s_v2", "azure", "eastus", 4, 8, 0.169, PricingTier.ON_DEMAND),
-        "Standard_F8s_v2": InstancePricing("Standard_F8s_v2", "azure", "eastus", 8, 16, 0.338, PricingTier.ON_DEMAND),
+        "Standard_D2s_v3": InstancePricing(
+            "Standard_D2s_v3", "azure", "eastus", 2, 8, 0.096, PricingTier.ON_DEMAND
+        ),
+        "Standard_D4s_v3": InstancePricing(
+            "Standard_D4s_v3", "azure", "eastus", 4, 16, 0.192, PricingTier.ON_DEMAND
+        ),
+        "Standard_D8s_v3": InstancePricing(
+            "Standard_D8s_v3", "azure", "eastus", 8, 32, 0.384, PricingTier.ON_DEMAND
+        ),
+        "Standard_D16s_v3": InstancePricing(
+            "Standard_D16s_v3", "azure", "eastus", 16, 64, 0.768, PricingTier.ON_DEMAND
+        ),
+        "Standard_E2s_v3": InstancePricing(
+            "Standard_E2s_v3", "azure", "eastus", 2, 16, 0.126, PricingTier.ON_DEMAND
+        ),
+        "Standard_E4s_v3": InstancePricing(
+            "Standard_E4s_v3", "azure", "eastus", 4, 32, 0.252, PricingTier.ON_DEMAND
+        ),
+        "Standard_E8s_v3": InstancePricing(
+            "Standard_E8s_v3", "azure", "eastus", 8, 64, 0.504, PricingTier.ON_DEMAND
+        ),
+        "Standard_F4s_v2": InstancePricing(
+            "Standard_F4s_v2", "azure", "eastus", 4, 8, 0.169, PricingTier.ON_DEMAND
+        ),
+        "Standard_F8s_v2": InstancePricing(
+            "Standard_F8s_v2", "azure", "eastus", 8, 16, 0.338, PricingTier.ON_DEMAND
+        ),
     }
 
     # Spot pricing multipliers (approximate)
@@ -432,7 +510,9 @@ class CloudPricing:
                         gpu_count=instance_data.get("gpu_count", 0),
                         gpu_type=instance_data.get("gpu_type"),
                         local_storage_gb=instance_data.get("local_storage_gb", 0),
-                        network_performance=instance_data.get("network_performance", "moderate"),
+                        network_performance=instance_data.get(
+                            "network_performance", "moderate"
+                        ),
                     )
                     self._instances[provider][name] = pricing
                     count += 1

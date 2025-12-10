@@ -445,24 +445,26 @@ class TestFeedbackLoop:
         """Test importing patterns from JSON."""
         loop = FeedbackLoop()
 
-        patterns_json = json.dumps([
-            {
-                "pattern_id": "pattern-1",
-                "condition": {"metric": {"operator": "gt", "threshold": 10}},
-                "action": {"param": "value"},
-                "success_count": 8,
-                "failure_count": 2,
-                "avg_improvement": 15.0,
-            },
-            {
-                "pattern_id": "pattern-2",
-                "condition": {"other": {"operator": "lt", "threshold": 5}},
-                "action": {"other_param": "other_value"},
-                "success_count": 10,
-                "failure_count": 0,
-                "avg_improvement": 20.0,
-            },
-        ])
+        patterns_json = json.dumps(
+            [
+                {
+                    "pattern_id": "pattern-1",
+                    "condition": {"metric": {"operator": "gt", "threshold": 10}},
+                    "action": {"param": "value"},
+                    "success_count": 8,
+                    "failure_count": 2,
+                    "avg_improvement": 15.0,
+                },
+                {
+                    "pattern_id": "pattern-2",
+                    "condition": {"other": {"operator": "lt", "threshold": 5}},
+                    "action": {"other_param": "other_value"},
+                    "success_count": 10,
+                    "failure_count": 0,
+                    "avg_improvement": 20.0,
+                },
+            ]
+        )
 
         count = loop.import_patterns(patterns_json)
 

@@ -91,7 +91,10 @@ def register():
 
         # Validate username
         if len(username) < 3 or len(username) > 50:
-            return jsonify({"error": "Username must be between 3 and 50 characters"}), 400
+            return (
+                jsonify({"error": "Username must be between 3 and 50 characters"}),
+                400,
+            )
         if not re.match(r"^[a-z0-9_]+$", username):
             return (
                 jsonify(
@@ -625,7 +628,9 @@ def list_users():
                 query = query.filter(User.is_active == is_active_bool)
 
             total = query.count()
-            users = query.order_by(User.created_at.desc()).offset(offset).limit(limit).all()
+            users = (
+                query.order_by(User.created_at.desc()).offset(offset).limit(limit).all()
+            )
 
             return jsonify(
                 {
@@ -677,6 +682,7 @@ def update_user(user_id: int):
     """
     try:
         current_user = get_current_user()
+        assert current_user is not None  # Guaranteed by @require_auth  # nosec B101
         data = request.get_json()
 
         if not data:
@@ -733,6 +739,7 @@ def delete_user(user_id: int):
     """Delete a user (admin only)."""
     try:
         current_user = get_current_user()
+        assert current_user is not None  # Guaranteed by @require_auth  # nosec B101
 
         if user_id == current_user.id:
             return jsonify({"error": "Cannot delete your own account"}), 400

@@ -30,7 +30,9 @@ def init_cost_modeling() -> None:
 
     _cloud_pricing = CloudPricing()
     _cost_model = CostModel()
-    _cost_optimizer = CostOptimizer(cost_model=_cost_model, cloud_pricing=_cloud_pricing)
+    _cost_optimizer = CostOptimizer(
+        cost_model=_cost_model, cloud_pricing=_cloud_pricing
+    )
     _cost_comparison = CostComparison(cloud_pricing=_cloud_pricing)
 
 
@@ -61,12 +63,17 @@ def get_cost_status():
     Returns:
         JSON response with cost service status
     """
-    return jsonify({
-        "cost_model_available": _cost_model is not None,
-        "cost_optimizer_available": _cost_optimizer is not None,
-        "cloud_pricing_available": _cloud_pricing is not None,
-        "supported_providers": ["aws", "gcp", "azure"],
-    }), 200
+    return (
+        jsonify(
+            {
+                "cost_model_available": _cost_model is not None,
+                "cost_optimizer_available": _cost_optimizer is not None,
+                "cloud_pricing_available": _cloud_pricing is not None,
+                "supported_providers": ["aws", "gcp", "azure"],
+            }
+        ),
+        200,
+    )
 
 
 @cost_bp.route("/estimate", methods=["POST"])
@@ -100,7 +107,12 @@ def estimate_cost():
     if not data:
         return jsonify({"error": "Request body required"}), 400
 
-    required = ["num_executors", "executor_cores", "executor_memory_mb", "duration_hours"]
+    required = [
+        "num_executors",
+        "executor_cores",
+        "executor_memory_mb",
+        "duration_hours",
+    ]
     missing = [f for f in required if f not in data]
     if missing:
         return jsonify({"error": f"Missing required fields: {', '.join(missing)}"}), 400
@@ -110,10 +122,15 @@ def estimate_cost():
     try:
         instance_type = InstanceType(instance_type_str)
     except ValueError:
-        return jsonify({
-            "error": f"Invalid instance_type: {instance_type_str}. "
-                     f"Valid options: on_demand, spot, preemptible, reserved, savings_plan"
-        }), 400
+        return (
+            jsonify(
+                {
+                    "error": f"Invalid instance_type: {instance_type_str}. "
+                    f"Valid options: on_demand, spot, preemptible, reserved, savings_plan"
+                }
+            ),
+            400,
+        )
 
     # Set provider if specified
     provider = data.get("provider", "generic")
@@ -156,7 +173,10 @@ def estimate_from_config():
     data = request.get_json()
 
     if not data or "config" not in data or "duration_hours" not in data:
-        return jsonify({"error": "Missing required fields: config, duration_hours"}), 400
+        return (
+            jsonify({"error": "Missing required fields: config, duration_hours"}),
+            400,
+        )
 
     estimate = cost_model.estimate_from_config(
         config=data["config"],
@@ -192,17 +212,25 @@ def optimize_cost():
     data = request.get_json()
 
     if not data or "config" not in data or "duration_hours" not in data:
-        return jsonify({"error": "Missing required fields: config, duration_hours"}), 400
+        return (
+            jsonify({"error": "Missing required fields: config, duration_hours"}),
+            400,
+        )
 
     # Parse goal
     goal_str = data.get("goal", "balance").lower()
     try:
         goal = OptimizationGoal(goal_str)
     except ValueError:
-        return jsonify({
-            "error": f"Invalid goal: {goal_str}. "
-                     f"Valid options: minimize_cost, minimize_duration, balance, budget_constraint"
-        }), 400
+        return (
+            jsonify(
+                {
+                    "error": f"Invalid goal: {goal_str}. "
+                    f"Valid options: minimize_cost, minimize_duration, balance, budget_constraint"
+                }
+            ),
+            400,
+        )
 
     result = optimizer.optimize(
         current_config=data["config"],
@@ -275,7 +303,10 @@ def get_cost_duration_frontier():
     data = request.get_json()
 
     if not data or "config" not in data or "base_duration_hours" not in data:
-        return jsonify({"error": "Missing required fields: config, base_duration_hours"}), 400
+        return (
+            jsonify({"error": "Missing required fields: config, base_duration_hours"}),
+            400,
+        )
 
     frontier = optimizer.find_cost_duration_frontier(
         current_config=data["config"],
@@ -283,17 +314,22 @@ def get_cost_duration_frontier():
         num_points=data.get("num_points", 5),
     )
 
-    return jsonify({
-        "frontier": [
+    return (
+        jsonify(
             {
-                "config": config,
-                "cost": round(cost, 4),
-                "estimated_duration_hours": round(duration, 2),
+                "frontier": [
+                    {
+                        "config": config,
+                        "cost": round(cost, 4),
+                        "estimated_duration_hours": round(duration, 2),
+                    }
+                    for config, cost, duration in frontier
+                ],
+                "points": len(frontier),
             }
-            for config, cost, duration in frontier
-        ],
-        "points": len(frontier),
-    }), 200
+        ),
+        200,
+    )
 
 
 @cost_bp.route("/compare/providers", methods=["POST"])
@@ -318,7 +354,10 @@ def compare_providers():
     data = request.get_json()
 
     if not data or "config" not in data or "duration_hours" not in data:
-        return jsonify({"error": "Missing required fields: config, duration_hours"}), 400
+        return (
+            jsonify({"error": "Missing required fields: config, duration_hours"}),
+            400,
+        )
 
     result = comparison.compare_providers(
         config=data["config"],
@@ -363,12 +402,17 @@ def compare_regions():
 
     sorted_costs = sorted(costs.items(), key=lambda x: x[1])
 
-    return jsonify({
-        "provider": data["provider"],
-        "regions": {r: c for r, c in sorted_costs},
-        "cheapest_region": sorted_costs[0][0] if sorted_costs else None,
-        "cheapest_cost": sorted_costs[0][1] if sorted_costs else None,
-    }), 200
+    return (
+        jsonify(
+            {
+                "provider": data["provider"],
+                "regions": {r: c for r, c in sorted_costs},
+                "cheapest_region": sorted_costs[0][0] if sorted_costs else None,
+                "cheapest_cost": sorted_costs[0][1] if sorted_costs else None,
+            }
+        ),
+        200,
+    )
 
 
 @cost_bp.route("/compare/cheapest", methods=["POST"])
@@ -393,7 +437,10 @@ def find_cheapest_option():
     data = request.get_json()
 
     if not data or "config" not in data or "duration_hours" not in data:
-        return jsonify({"error": "Missing required fields: config, duration_hours"}), 400
+        return (
+            jsonify({"error": "Missing required fields: config, duration_hours"}),
+            400,
+        )
 
     result = comparison.find_cheapest_option(
         config=data["config"],
@@ -427,7 +474,13 @@ def estimate_migration():
 
     data = request.get_json()
 
-    required = ["config", "duration_hours", "from_provider", "to_provider", "data_size_gb"]
+    required = [
+        "config",
+        "duration_hours",
+        "from_provider",
+        "to_provider",
+        "data_size_gb",
+    ]
     missing = [f for f in required if f not in data]
     if missing:
         return jsonify({"error": f"Missing required fields: {', '.join(missing)}"}), 400
@@ -470,10 +523,15 @@ def list_instances():
         min_memory_gb=min_memory_gb,
     )
 
-    return jsonify({
-        "instances": [i.to_dict() for i in instances],
-        "count": len(instances),
-    }), 200
+    return (
+        jsonify(
+            {
+                "instances": [i.to_dict() for i in instances],
+                "count": len(instances),
+            }
+        ),
+        200,
+    )
 
 
 @cost_bp.route("/instances/<provider>/<instance_type>", methods=["GET"])
@@ -500,6 +558,7 @@ def get_instance_pricing(provider: str, instance_type: str):
     region = request.args.get("region")
 
     from spark_optimizer.cost.cloud_pricing import PricingTier
+
     try:
         tier = PricingTier(tier_str)
     except ValueError:
@@ -537,7 +596,10 @@ def find_best_instance():
     data = request.get_json()
 
     if not data or "min_vcpus" not in data or "min_memory_gb" not in data:
-        return jsonify({"error": "Missing required fields: min_vcpus, min_memory_gb"}), 400
+        return (
+            jsonify({"error": "Missing required fields: min_vcpus, min_memory_gb"}),
+            400,
+        )
 
     from spark_optimizer.cost.cloud_pricing import PricingTier
 
@@ -555,10 +617,15 @@ def find_best_instance():
         prefer_local_storage=data.get("prefer_local_storage", False),
     )
 
-    return jsonify({
-        "instances": [i.to_dict() for i in instances[:10]],
-        "count": len(instances),
-    }), 200
+    return (
+        jsonify(
+            {
+                "instances": [i.to_dict() for i in instances[:10]],
+                "count": len(instances),
+            }
+        ),
+        200,
+    )
 
 
 @cost_bp.route("/spot/recommend", methods=["POST"])

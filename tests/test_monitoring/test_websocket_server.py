@@ -102,8 +102,7 @@ class TestWebSocketServerStartStop:
     def test_start_without_websockets(self):
         """Test start when websockets library is not available."""
         with patch.object(
-            WebSocketServer, '__init__',
-            lambda self, *args, **kwargs: None
+            WebSocketServer, "__init__", lambda self, *args, **kwargs: None
         ):
             server = WebSocketServer.__new__(WebSocketServer)
             server.host = "localhost"
@@ -118,6 +117,7 @@ class TestWebSocketServerStartStop:
 
         # Patch WEBSOCKETS_AVAILABLE
         import spark_optimizer.monitoring.websocket_server as ws_module
+
         original = ws_module.WEBSOCKETS_AVAILABLE
 
         try:
@@ -196,10 +196,12 @@ class TestWebSocketServerMessageHandling:
         server._clients.add(mock_websocket)
         server._subscriptions[mock_websocket] = {"*"}
 
-        message = json.dumps({
-            "type": "subscribe",
-            "events": ["metrics", "alerts"],
-        })
+        message = json.dumps(
+            {
+                "type": "subscribe",
+                "events": ["metrics", "alerts"],
+            }
+        )
 
         await server._handle_message(mock_websocket, message)
 
@@ -216,10 +218,12 @@ class TestWebSocketServerMessageHandling:
         server._clients.add(mock_websocket)
         server._subscriptions[mock_websocket] = {"metrics", "alerts", "status"}
 
-        message = json.dumps({
-            "type": "unsubscribe",
-            "events": ["alerts"],
-        })
+        message = json.dumps(
+            {
+                "type": "unsubscribe",
+                "events": ["alerts"],
+            }
+        )
 
         await server._handle_message(mock_websocket, message)
 
@@ -382,6 +386,7 @@ class TestWebSocketServerIntegration:
         """Test that WEBSOCKETS_AVAILABLE is correctly set."""
         try:
             import websockets
+
             assert WEBSOCKETS_AVAILABLE is True
         except ImportError:
             assert WEBSOCKETS_AVAILABLE is False

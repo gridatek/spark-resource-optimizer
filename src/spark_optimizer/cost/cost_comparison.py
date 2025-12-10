@@ -72,8 +72,7 @@ class CostComparison:
         """
         self._cloud_pricing = cloud_pricing or CloudPricing()
         self._cost_models: Dict[str, CostModel] = {
-            provider: CostModel(cloud_provider=provider)
-            for provider in self.PROVIDERS
+            provider: CostModel(cloud_provider=provider) for provider in self.PROVIDERS
         }
 
     def compare_providers(
@@ -172,12 +171,14 @@ class CostComparison:
                 model = CostModel(cloud_provider=provider, region=region)
                 estimate = model.estimate_from_config(config, duration_hours)
 
-                options.append({
-                    "provider": provider,
-                    "region": region,
-                    "tier": "on_demand",
-                    "cost": estimate.total_cost,
-                })
+                options.append(
+                    {
+                        "provider": provider,
+                        "region": region,
+                        "tier": "on_demand",
+                        "cost": estimate.total_cost,
+                    }
+                )
 
                 # Spot cost if requested
                 if include_spot:
@@ -190,15 +191,17 @@ class CostComparison:
                         instance_type=InstanceType.SPOT,
                     )
 
-                    options.append({
-                        "provider": provider,
-                        "region": region,
-                        "tier": "spot",
-                        "cost": spot_estimate.total_cost,
-                    })
+                    options.append(
+                        {
+                            "provider": provider,
+                            "region": region,
+                            "tier": "spot",
+                            "cost": spot_estimate.total_cost,
+                        }
+                    )
 
         # Sort by cost
-        options.sort(key=lambda x: x["cost"])
+        options.sort(key=lambda x: float(x["cost"]))  # type: ignore[arg-type]
 
         return {
             "cheapest": options[0] if options else None,
@@ -244,14 +247,16 @@ class CostComparison:
         migration_overhead = egress_cost + ingress_cost
 
         # Calculate ongoing savings
-        monthly_savings = (from_estimate.total_cost - to_estimate.total_cost) * 720 / duration_hours
+        monthly_savings = (
+            (from_estimate.total_cost - to_estimate.total_cost) * 720 / duration_hours
+        )
         # Assumes 720 hours/month of job runtime
 
         # Payback period
         if monthly_savings > 0:
             payback_months = migration_overhead / monthly_savings
         else:
-            payback_months = float('inf')
+            payback_months = float("inf")
 
         return {
             "from_provider": from_provider,
@@ -263,7 +268,9 @@ class CostComparison:
             "ingress_cost": round(ingress_cost, 4),
             "total_migration_cost": round(migration_overhead, 4),
             "estimated_monthly_savings": round(monthly_savings, 4),
-            "payback_months": round(payback_months, 1) if payback_months != float('inf') else None,
+            "payback_months": (
+                round(payback_months, 1) if payback_months != float("inf") else None
+            ),
             "recommendation": self._migration_recommendation(
                 monthly_savings, migration_overhead, payback_months
             ),
@@ -315,7 +322,7 @@ class CostComparison:
     def recommend_provider(
         self,
         requirements: Dict,
-        priorities: Dict[str, float] = None,
+        priorities: Optional[Dict[str, float]] = None,
     ) -> Dict:
         """Recommend a cloud provider based on requirements.
 
@@ -344,7 +351,9 @@ class CostComparison:
 
         for provider in self.PROVIDERS:
             # Cost score (lower is better)
-            estimate = self._cost_models[provider].estimate_from_config(config, duration)
+            estimate = self._cost_models[provider].estimate_from_config(
+                config, duration
+            )
             cost_score = 1 / (1 + estimate.total_cost)  # Normalize
 
             # Performance score (based on spot availability and instance variety)
@@ -357,9 +366,9 @@ class CostComparison:
 
             # Weighted score
             total_score = (
-                priorities["cost"] * cost_score +
-                priorities["performance"] * perf_score +
-                priorities["reliability"] * reliability_score
+                priorities["cost"] * cost_score
+                + priorities["performance"] * perf_score
+                + priorities["reliability"] * reliability_score
             )
 
             scores[provider] = {

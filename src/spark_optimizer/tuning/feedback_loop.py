@@ -137,21 +137,28 @@ class FeedbackLoop:
             TuningFeedback record
         """
         self._feedback_counter += 1
-        feedback_id = f"fb-{self._feedback_counter}-{int(datetime.utcnow().timestamp())}"
+        feedback_id = (
+            f"fb-{self._feedback_counter}-{int(datetime.utcnow().timestamp())}"
+        )
 
         # Calculate actual improvement
         if metric_before != 0:
             # For metrics where lower is better (like duration)
             if metric_name in ["duration", "cost", "gc_time", "latency"]:
-                actual_improvement = (metric_before - metric_after) / metric_before * 100
+                actual_improvement = (
+                    (metric_before - metric_after) / metric_before * 100
+                )
             else:
-                actual_improvement = (metric_after - metric_before) / metric_before * 100
+                actual_improvement = (
+                    (metric_after - metric_before) / metric_before * 100
+                )
         else:
             actual_improvement = 0.0
 
         # Determine success
         success = actual_improvement > 0 or (
-            expected_improvement > 0 and actual_improvement >= expected_improvement * 0.5
+            expected_improvement > 0
+            and actual_improvement >= expected_improvement * 0.5
         )
 
         feedback = TuningFeedback(
@@ -358,8 +365,8 @@ class FeedbackLoop:
         # Update average improvement
         total = pattern.success_count + pattern.failure_count
         pattern.avg_improvement = (
-            (pattern.avg_improvement * (total - 1) + feedback.actual_improvement) / total
-        )
+            pattern.avg_improvement * (total - 1) + feedback.actual_improvement
+        ) / total
 
         pattern.last_used = datetime.utcnow()
 

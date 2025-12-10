@@ -48,12 +48,21 @@ def get_tuning_status():
     auto_tuner = get_auto_tuner()
     feedback_loop = get_feedback_loop()
 
-    return jsonify({
-        "tuning_available": auto_tuner is not None,
-        "feedback_loop_available": feedback_loop is not None,
-        "active_sessions": len(auto_tuner.list_sessions(status="active")) if auto_tuner else 0,
-        "tunable_parameters": len(auto_tuner.get_tunable_parameters()) if auto_tuner else 0,
-    }), 200
+    return (
+        jsonify(
+            {
+                "tuning_available": auto_tuner is not None,
+                "feedback_loop_available": feedback_loop is not None,
+                "active_sessions": (
+                    len(auto_tuner.list_sessions(status="active")) if auto_tuner else 0
+                ),
+                "tunable_parameters": (
+                    len(auto_tuner.get_tunable_parameters()) if auto_tuner else 0
+                ),
+            }
+        ),
+        200,
+    )
 
 
 @tuning_bp.route("/sessions", methods=["GET"])
@@ -77,10 +86,15 @@ def list_tuning_sessions():
 
     sessions = auto_tuner.list_sessions(app_id=app_id, status=status)
 
-    return jsonify({
-        "sessions": [s.to_dict() for s in sessions],
-        "count": len(sessions),
-    }), 200
+    return (
+        jsonify(
+            {
+                "sessions": [s.to_dict() for s in sessions],
+                "count": len(sessions),
+            }
+        ),
+        200,
+    )
 
 
 @tuning_bp.route("/sessions", methods=["POST"])
@@ -121,10 +135,15 @@ def start_tuning_session():
     try:
         strategy = TuningStrategy(strategy_str)
     except ValueError:
-        return jsonify({
-            "error": f"Invalid strategy: {strategy_str}. "
-                     f"Valid options: conservative, moderate, aggressive"
-        }), 400
+        return (
+            jsonify(
+                {
+                    "error": f"Invalid strategy: {strategy_str}. "
+                    f"Valid options: conservative, moderate, aggressive"
+                }
+            ),
+            400,
+        )
 
     target_metric = data.get("target_metric", "duration")
 
@@ -136,10 +155,15 @@ def start_tuning_session():
         target_metric=target_metric,
     )
 
-    return jsonify({
-        "status": "created",
-        "session": session.to_dict(),
-    }), 201
+    return (
+        jsonify(
+            {
+                "status": "created",
+                "session": session.to_dict(),
+            }
+        ),
+        201,
+    )
 
 
 @tuning_bp.route("/sessions/<session_id>", methods=["GET"])
@@ -191,7 +215,10 @@ def analyze_and_recommend(session_id: str):
         return jsonify({"error": "Session not found"}), 404
 
     if session.status != "active":
-        return jsonify({"error": f"Session is not active (status: {session.status})"}), 400
+        return (
+            jsonify({"error": f"Session is not active (status: {session.status})"}),
+            400,
+        )
 
     data = request.get_json()
 
@@ -202,14 +229,19 @@ def analyze_and_recommend(session_id: str):
 
     adjustments = auto_tuner.analyze_and_recommend(session_id, metrics)
 
-    return jsonify({
-        "session_id": session_id,
-        "iteration": session.iterations,
-        "status": session.status,
-        "adjustments": [a.to_dict() for a in adjustments],
-        "best_config": session.best_config,
-        "best_metric_value": session.best_metric_value,
-    }), 200
+    return (
+        jsonify(
+            {
+                "session_id": session_id,
+                "iteration": session.iterations,
+                "status": session.status,
+                "adjustments": [a.to_dict() for a in adjustments],
+                "best_config": session.best_config,
+                "best_metric_value": session.best_metric_value,
+            }
+        ),
+        200,
+    )
 
 
 @tuning_bp.route("/sessions/<session_id>/apply", methods=["POST"])
@@ -260,11 +292,16 @@ def apply_adjustment(session_id: str):
     )
 
     if auto_tuner.apply_adjustment(session_id, adjustment):
-        return jsonify({
-            "status": "applied",
-            "adjustment": adjustment.to_dict(),
-            "current_config": session.current_config,
-        }), 200
+        return (
+            jsonify(
+                {
+                    "status": "applied",
+                    "adjustment": adjustment.to_dict(),
+                    "current_config": session.current_config,
+                }
+            ),
+            200,
+        )
     else:
         return jsonify({"error": "Failed to apply adjustment"}), 500
 
@@ -285,10 +322,15 @@ def pause_session(session_id: str):
         return jsonify({"error": "Auto-tuner not initialized"}), 503
 
     if auto_tuner.pause_session(session_id):
-        return jsonify({
-            "status": "paused",
-            "session_id": session_id,
-        }), 200
+        return (
+            jsonify(
+                {
+                    "status": "paused",
+                    "session_id": session_id,
+                }
+            ),
+            200,
+        )
     else:
         return jsonify({"error": "Session not found or not active"}), 404
 
@@ -309,10 +351,15 @@ def resume_session(session_id: str):
         return jsonify({"error": "Auto-tuner not initialized"}), 503
 
     if auto_tuner.resume_session(session_id):
-        return jsonify({
-            "status": "resumed",
-            "session_id": session_id,
-        }), 200
+        return (
+            jsonify(
+                {
+                    "status": "resumed",
+                    "session_id": session_id,
+                }
+            ),
+            200,
+        )
     else:
         return jsonify({"error": "Session not found or not paused"}), 404
 
@@ -342,10 +389,15 @@ def end_session(session_id: str):
 
     if auto_tuner.end_session(session_id, status):
         session = auto_tuner.get_session(session_id)
-        return jsonify({
-            "status": "ended",
-            "session": session.to_dict() if session else None,
-        }), 200
+        return (
+            jsonify(
+                {
+                    "status": "ended",
+                    "session": session.to_dict() if session else None,
+                }
+            ),
+            200,
+        )
     else:
         return jsonify({"error": "Session not found or already ended"}), 404
 
@@ -372,12 +424,17 @@ def get_best_config(session_id: str):
 
     session = auto_tuner.get_session(session_id)
 
-    return jsonify({
-        "session_id": session_id,
-        "best_config": config,
-        "best_metric_value": session.best_metric_value if session else None,
-        "iterations": session.iterations if session else 0,
-    }), 200
+    return (
+        jsonify(
+            {
+                "session_id": session_id,
+                "best_config": config,
+                "best_metric_value": session.best_metric_value if session else None,
+                "iterations": session.iterations if session else 0,
+            }
+        ),
+        200,
+    )
 
 
 @tuning_bp.route("/parameters", methods=["GET"])
@@ -394,10 +451,17 @@ def list_tunable_parameters():
 
     params = auto_tuner.get_tunable_parameters()
 
-    return jsonify({
-        "parameters": {name: config.to_dict() for name, config in params.items()},
-        "count": len(params),
-    }), 200
+    return (
+        jsonify(
+            {
+                "parameters": {
+                    name: config.to_dict() for name, config in params.items()
+                },
+                "count": len(params),
+            }
+        ),
+        200,
+    )
 
 
 @tuning_bp.route("/validate", methods=["POST"])
@@ -432,10 +496,15 @@ def validate_config():
         if not valid:
             all_valid = False
 
-    return jsonify({
-        "valid": all_valid,
-        "results": results,
-    }), 200
+    return (
+        jsonify(
+            {
+                "valid": all_valid,
+                "results": results,
+            }
+        ),
+        200,
+    )
 
 
 @tuning_bp.route("/feedback", methods=["POST"])
@@ -467,7 +536,14 @@ def submit_tuning_feedback():
     if not data:
         return jsonify({"error": "Request body required"}), 400
 
-    required = ["session_id", "app_id", "config_applied", "metric_name", "metric_before", "metric_after"]
+    required = [
+        "session_id",
+        "app_id",
+        "config_applied",
+        "metric_name",
+        "metric_before",
+        "metric_after",
+    ]
     missing = [f for f in required if f not in data]
     if missing:
         return jsonify({"error": f"Missing required fields: {', '.join(missing)}"}), 400
@@ -483,10 +559,15 @@ def submit_tuning_feedback():
         notes=data.get("notes", ""),
     )
 
-    return jsonify({
-        "status": "recorded",
-        "feedback": feedback.to_dict(),
-    }), 201
+    return (
+        jsonify(
+            {
+                "status": "recorded",
+                "feedback": feedback.to_dict(),
+            }
+        ),
+        201,
+    )
 
 
 @tuning_bp.route("/feedback", methods=["GET"])
@@ -516,10 +597,15 @@ def get_tuning_feedback():
         limit=limit,
     )
 
-    return jsonify({
-        "feedback": [f.to_dict() for f in feedback],
-        "count": len(feedback),
-    }), 200
+    return (
+        jsonify(
+            {
+                "feedback": [f.to_dict() for f in feedback],
+                "count": len(feedback),
+            }
+        ),
+        200,
+    )
 
 
 @tuning_bp.route("/feedback/statistics", methods=["GET"])
@@ -563,10 +649,15 @@ def get_learned_patterns():
         min_confidence=min_confidence,
     )
 
-    return jsonify({
-        "patterns": [p.to_dict() for p in patterns],
-        "count": len(patterns),
-    }), 200
+    return (
+        jsonify(
+            {
+                "patterns": [p.to_dict() for p in patterns],
+                "count": len(patterns),
+            }
+        ),
+        200,
+    )
 
 
 @tuning_bp.route("/recommend", methods=["POST"])
@@ -590,7 +681,10 @@ def get_learned_recommendation():
     data = request.get_json()
 
     if not data or "metrics" not in data or "current_config" not in data:
-        return jsonify({"error": "Missing required fields: metrics, current_config"}), 400
+        return (
+            jsonify({"error": "Missing required fields: metrics, current_config"}),
+            400,
+        )
 
     result = feedback_loop.get_recommendation(
         metrics=data["metrics"],
@@ -599,13 +693,23 @@ def get_learned_recommendation():
 
     if result:
         recommended_changes, confidence = result
-        return jsonify({
-            "has_recommendation": True,
-            "recommended_changes": recommended_changes,
-            "confidence": confidence,
-        }), 200
+        return (
+            jsonify(
+                {
+                    "has_recommendation": True,
+                    "recommended_changes": recommended_changes,
+                    "confidence": confidence,
+                }
+            ),
+            200,
+        )
     else:
-        return jsonify({
-            "has_recommendation": False,
-            "message": "No matching pattern found with sufficient confidence",
-        }), 200
+        return (
+            jsonify(
+                {
+                    "has_recommendation": False,
+                    "message": "No matching pattern found with sufficient confidence",
+                }
+            ),
+            200,
+        )

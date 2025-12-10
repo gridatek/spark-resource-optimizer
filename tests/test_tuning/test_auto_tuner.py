@@ -279,7 +279,9 @@ class TestAutoTuner:
             target_metric="duration",
         )
 
-        tuner.analyze_and_recommend(session.session_id, {"duration": 100.0, "cpu": 50.0})
+        tuner.analyze_and_recommend(
+            session.session_id, {"duration": 100.0, "cpu": 50.0}
+        )
 
         assert len(session.metrics_history) == 1
         assert session.metrics_history[0]["metrics"]["duration"] == 100.0
@@ -316,7 +318,9 @@ class TestAutoTuner:
         )
 
         for i in range(5):
-            tuner.analyze_and_recommend(session.session_id, {"duration": 100.0 - i * 10})
+            tuner.analyze_and_recommend(
+                session.session_id, {"duration": 100.0 - i * 10}
+            )
 
         assert session.status == "completed"
         assert session.iterations == 3

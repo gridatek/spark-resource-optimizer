@@ -203,6 +203,7 @@ class FeatureExtractor:
 
         elif method == "minmax":
             # Min-max normalization: (x - min) / (max - min)
+            assert self._mins is not None and self._maxs is not None  # nosec B101
             ranges = self._maxs - self._mins
             normalized = (feature_matrix - self._mins) / ranges
 
@@ -292,6 +293,12 @@ class FeatureExtractor:
         if not self._is_fitted:
             return {}
 
+        assert (  # nosec B101
+            self._means is not None
+            and self._stds is not None
+            and self._mins is not None
+            and self._maxs is not None
+        )
         return {
             "means": dict(zip(self.feature_names, self._means.tolist())),
             "stds": dict(zip(self.feature_names, self._stds.tolist())),

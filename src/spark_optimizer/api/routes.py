@@ -98,11 +98,18 @@ def get_recommendation():
 
         # Support both input_size_gb and input_size_bytes
         if "input_size_gb" in data:
-            input_size_bytes = int(data["input_size_gb"] * (1024 ** 3))
+            input_size_bytes = int(data["input_size_gb"] * (1024**3))
         elif "input_size_bytes" in data:
             input_size_bytes = data["input_size_bytes"]
         else:
-            return jsonify({"error": "Missing required parameter: input_size_gb or input_size_bytes"}), 400
+            return (
+                jsonify(
+                    {
+                        "error": "Missing required parameter: input_size_gb or input_size_bytes"
+                    }
+                ),
+                400,
+            )
 
         job_type = data.get("job_type")
         sla_minutes = data.get("sla_minutes")
@@ -111,7 +118,12 @@ def get_recommendation():
 
         # Validate priority
         if priority not in ["performance", "cost", "balanced"]:
-            return jsonify({"error": "priority must be one of: performance, cost, balanced"}), 400
+            return (
+                jsonify(
+                    {"error": "priority must be one of: performance, cost, balanced"}
+                ),
+                400,
+            )
 
         # Get recommendation
         recommender = get_recommender()
@@ -157,31 +169,67 @@ def collect_job_data():
         # Initialize appropriate collector
         if source_type == "event_log":
             if not source_path:
-                return jsonify({"error": "source_path is required for event_log collector"}), 400
+                return (
+                    jsonify(
+                        {"error": "source_path is required for event_log collector"}
+                    ),
+                    400,
+                )
             collector = EventLogCollector(source_path)
 
         elif source_type == "history_server":
             if not source_path:
-                return jsonify({"error": "source_path (URL) is required for history_server collector"}), 400
+                return (
+                    jsonify(
+                        {
+                            "error": "source_path (URL) is required for history_server collector"
+                        }
+                    ),
+                    400,
+                )
             collector = HistoryServerCollector(source_path, config)
             if not collector.validate_config():
-                return jsonify({
-                    "error": f"Cannot connect to History Server at {source_path}",
-                    "message": "Please verify the URL and ensure the History Server is running"
-                }), 503
+                return (
+                    jsonify(
+                        {
+                            "error": f"Cannot connect to History Server at {source_path}",
+                            "message": "Please verify the URL and ensure the History Server is running",
+                        }
+                    ),
+                    503,
+                )
 
         elif source_type == "metrics":
             if not source_path:
-                return jsonify({"error": "source_path (endpoint URL) is required for metrics collector"}), 400
+                return (
+                    jsonify(
+                        {
+                            "error": "source_path (endpoint URL) is required for metrics collector"
+                        }
+                    ),
+                    400,
+                )
             collector = MetricsCollector(source_path, config)
             if not collector.validate_config():
-                return jsonify({
-                    "error": f"Cannot connect to metrics endpoint at {source_path}",
-                    "message": "Please verify the URL and ensure the metrics server is running"
-                }), 503
+                return (
+                    jsonify(
+                        {
+                            "error": f"Cannot connect to metrics endpoint at {source_path}",
+                            "message": "Please verify the URL and ensure the metrics server is running",
+                        }
+                    ),
+                    503,
+                )
 
         else:
-            return jsonify({"error": f"Unknown source_type: {source_type}. Supported: event_log, history_server, metrics"}), 400
+            return (
+                jsonify(
+                    {
+                        "error": f"Unknown source_type: {source_type}. Supported: event_log, history_server, metrics"
+                    }
+                ),
+                400,
+            )
 
         # Collect jobs
         logger.info(f"Collecting jobs from {source_type}: {source_path}")
@@ -197,17 +245,20 @@ def collect_job_data():
             for job in job_data:
                 try:
                     # Check if job already exists
-                    existing = session.query(SparkApplication).filter(
-                        SparkApplication.app_id == job.get("app_id")
-                    ).first()
+                    existing = (
+                        session.query(SparkApplication)
+                        .filter(SparkApplication.app_id == job.get("app_id"))
+                        .first()
+                    )
 
                     if existing:
                         skipped += 1
                         continue
 
                     # Handle dataclass conversion if needed
-                    if hasattr(job, '__dataclass_fields__'):
+                    if hasattr(job, "__dataclass_fields__"):
                         from dataclasses import asdict
+
                         job = asdict(job)
 
                     # Create new application record
@@ -216,19 +267,26 @@ def collect_job_data():
                     collected += 1
 
                 except Exception as e:
-                    logger.error(f"Error storing job {job.get('app_id', 'unknown')}: {e}")
+                    logger.error(
+                        f"Error storing job {job.get('app_id', 'unknown')}: {e}"
+                    )
                     failed += 1
                     continue
 
             session.commit()
 
-        return jsonify({
-            "status": "success",
-            "jobs_collected": collected,
-            "jobs_skipped": skipped,
-            "jobs_failed": failed,
-            "message": f"Collected {collected} jobs from {source_type}",
-        }), 200
+        return (
+            jsonify(
+                {
+                    "status": "success",
+                    "jobs_collected": collected,
+                    "jobs_skipped": skipped,
+                    "jobs_failed": failed,
+                    "message": f"Collected {collected} jobs from {source_type}",
+                }
+            ),
+            200,
+        )
 
     except Exception as e:
         logger.error(f"Error collecting job data: {e}", exc_info=True)
@@ -287,10 +345,14 @@ def list_jobs():
                     pass
 
             if min_duration:
-                query = query.filter(SparkApplication.duration_ms >= min_duration * 1000)
+                query = query.filter(
+                    SparkApplication.duration_ms >= min_duration * 1000
+                )
 
             if max_duration:
-                query = query.filter(SparkApplication.duration_ms <= max_duration * 1000)
+                query = query.filter(
+                    SparkApplication.duration_ms <= max_duration * 1000
+                )
 
             # Get total count before pagination
             total = query.count()
@@ -303,34 +365,43 @@ def list_jobs():
             # Convert to list of dicts
             jobs_list = []
             for job in jobs:
-                jobs_list.append({
-                    "app_id": job.app_id,
-                    "app_name": job.app_name,
-                    "user": job.user,
-                    "start_time": job.start_time.isoformat() if job.start_time else None,
-                    "end_time": job.end_time.isoformat() if job.end_time else None,
-                    "duration_ms": job.duration_ms,
-                    "status": job.status,
-                    "configuration": {
-                        "num_executors": job.num_executors,
-                        "executor_cores": job.executor_cores,
-                        "executor_memory_mb": job.executor_memory_mb,
-                        "driver_memory_mb": job.driver_memory_mb,
-                    },
-                    "metrics": {
-                        "total_tasks": job.total_tasks,
-                        "failed_tasks": job.failed_tasks,
-                        "input_bytes": job.input_bytes,
-                        "output_bytes": job.output_bytes,
-                    },
-                })
+                jobs_list.append(
+                    {
+                        "app_id": job.app_id,
+                        "app_name": job.app_name,
+                        "user": job.user,
+                        "start_time": (
+                            job.start_time.isoformat() if job.start_time else None
+                        ),
+                        "end_time": job.end_time.isoformat() if job.end_time else None,
+                        "duration_ms": job.duration_ms,
+                        "status": job.status,
+                        "configuration": {
+                            "num_executors": job.num_executors,
+                            "executor_cores": job.executor_cores,
+                            "executor_memory_mb": job.executor_memory_mb,
+                            "driver_memory_mb": job.driver_memory_mb,
+                        },
+                        "metrics": {
+                            "total_tasks": job.total_tasks,
+                            "failed_tasks": job.failed_tasks,
+                            "input_bytes": job.input_bytes,
+                            "output_bytes": job.output_bytes,
+                        },
+                    }
+                )
 
-            return jsonify({
-                "jobs": jobs_list,
-                "total": total,
-                "limit": limit,
-                "offset": offset,
-            }), 200
+            return (
+                jsonify(
+                    {
+                        "jobs": jobs_list,
+                        "total": total,
+                        "limit": limit,
+                        "offset": offset,
+                    }
+                ),
+                200,
+            )
 
     except Exception as e:
         logger.error(f"Error listing jobs: {e}", exc_info=True)
@@ -351,9 +422,11 @@ def get_job_details(app_id: str):
         db = get_db()
 
         with db.get_session() as session:
-            job = session.query(SparkApplication).filter(
-                SparkApplication.app_id == app_id
-            ).first()
+            job = (
+                session.query(SparkApplication)
+                .filter(SparkApplication.app_id == app_id)
+                .first()
+            )
 
             if not job:
                 return jsonify({"error": "Job not found"}), 404
@@ -423,9 +496,11 @@ def analyze_job(app_id: str):
         analyzer = get_analyzer()
 
         with db.get_session() as session:
-            job = session.query(SparkApplication).filter(
-                SparkApplication.app_id == app_id
-            ).first()
+            job = (
+                session.query(SparkApplication)
+                .filter(SparkApplication.app_id == app_id)
+                .first()
+            )
 
             if not job:
                 return jsonify({"error": "Job not found"}), 404
@@ -461,23 +536,32 @@ def analyze_job(app_id: str):
             # Generate optimization suggestions based on issues
             suggestions = []
             for issue in analysis.get("issues", []):
-                suggestions.append({
-                    "issue": issue.get("type"),
-                    "severity": issue.get("severity"),
-                    "description": issue.get("description"),
-                    "recommendation": issue.get("recommendation"),
-                })
+                suggestions.append(
+                    {
+                        "issue": issue.get("type"),
+                        "severity": issue.get("severity"),
+                        "description": issue.get("description"),
+                        "recommendation": issue.get("recommendation"),
+                    }
+                )
 
-            return jsonify({
-                "app_id": app_id,
-                "analysis": {
-                    "resource_efficiency": analysis.get("resource_efficiency", {}),
-                    "bottlenecks": analysis.get("bottlenecks", []),
-                    "issues": analysis.get("issues", []),
-                    "health_score": analysis.get("health_score", 0),
-                },
-                "suggestions": suggestions,
-            }), 200
+            return (
+                jsonify(
+                    {
+                        "app_id": app_id,
+                        "analysis": {
+                            "resource_efficiency": analysis.get(
+                                "resource_efficiency", {}
+                            ),
+                            "bottlenecks": analysis.get("bottlenecks", []),
+                            "issues": analysis.get("issues", []),
+                            "health_score": analysis.get("health_score", 0),
+                        },
+                        "suggestions": suggestions,
+                    }
+                ),
+                200,
+            )
 
     except Exception as e:
         logger.error(f"Error analyzing job: {e}", exc_info=True)
@@ -502,14 +586,22 @@ def submit_feedback():
         data = request.get_json()
 
         if not data or "recommendation_id" not in data:
-            return jsonify({"error": "Missing required parameter: recommendation_id"}), 400
+            return (
+                jsonify({"error": "Missing required parameter: recommendation_id"}),
+                400,
+            )
 
         recommendation_id = data["recommendation_id"]
         satisfaction_score = data.get("satisfaction_score")
 
         if satisfaction_score is not None:
             if not (0.0 <= satisfaction_score <= 1.0):
-                return jsonify({"error": "satisfaction_score must be between 0.0 and 1.0"}), 400
+                return (
+                    jsonify(
+                        {"error": "satisfaction_score must be between 0.0 and 1.0"}
+                    ),
+                    400,
+                )
 
         db = get_db()
 
@@ -526,11 +618,16 @@ def submit_feedback():
 
             session.commit()
 
-        return jsonify({
-            "status": "success",
-            "message": "Feedback recorded",
-            "recommendation_id": recommendation_id,
-        }), 200
+        return (
+            jsonify(
+                {
+                    "status": "success",
+                    "message": "Feedback recorded",
+                    "recommendation_id": recommendation_id,
+                }
+            ),
+            200,
+        )
 
     except Exception as e:
         logger.error(f"Error submitting feedback: {e}", exc_info=True)
@@ -553,34 +650,52 @@ def get_stats():
             total_jobs = session.query(func.count(SparkApplication.id)).scalar() or 0
 
             if total_jobs == 0:
-                return jsonify({
-                    "total_jobs": 0,
-                    "avg_duration_ms": 0,
-                    "total_input_bytes": 0,
-                    "total_output_bytes": 0,
-                    "job_name_distribution": {},
-                }), 200
+                return (
+                    jsonify(
+                        {
+                            "total_jobs": 0,
+                            "avg_duration_ms": 0,
+                            "total_input_bytes": 0,
+                            "total_output_bytes": 0,
+                            "job_name_distribution": {},
+                        }
+                    ),
+                    200,
+                )
 
-            avg_duration = session.query(func.avg(SparkApplication.duration_ms)).scalar() or 0
-            total_input = session.query(func.sum(SparkApplication.input_bytes)).scalar() or 0
-            total_output = session.query(func.sum(SparkApplication.output_bytes)).scalar() or 0
+            avg_duration = (
+                session.query(func.avg(SparkApplication.duration_ms)).scalar() or 0
+            )
+            total_input = (
+                session.query(func.sum(SparkApplication.input_bytes)).scalar() or 0
+            )
+            total_output = (
+                session.query(func.sum(SparkApplication.output_bytes)).scalar() or 0
+            )
 
             # Job name distribution
             job_names = (
-                session.query(SparkApplication.app_name, func.count(SparkApplication.id))
+                session.query(
+                    SparkApplication.app_name, func.count(SparkApplication.id)
+                )
                 .group_by(SparkApplication.app_name)
                 .all()
             )
 
             job_name_dist = {name: count for name, count in job_names if name}
 
-            return jsonify({
-                "total_jobs": total_jobs,
-                "avg_duration_ms": int(avg_duration),
-                "total_input_bytes": total_input,
-                "total_output_bytes": total_output,
-                "job_name_distribution": job_name_dist,
-            }), 200
+            return (
+                jsonify(
+                    {
+                        "total_jobs": total_jobs,
+                        "avg_duration_ms": int(avg_duration),
+                        "total_input_bytes": total_input,
+                        "total_output_bytes": total_output,
+                        "job_name_distribution": job_name_dist,
+                    }
+                ),
+                200,
+            )
 
     except Exception as e:
         logger.error(f"Error getting stats: {e}", exc_info=True)

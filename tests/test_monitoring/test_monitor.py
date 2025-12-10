@@ -253,10 +253,13 @@ class TestSparkMonitor:
         monitor.add_application("app-123", "test_job")
         callback.reset_mock()
 
-        monitor.update_metrics("app-123", {
-            "cpu_usage": 75.0,
-            "memory_usage": 8192.0,
-        })
+        monitor.update_metrics(
+            "app-123",
+            {
+                "cpu_usage": 75.0,
+                "memory_usage": 8192.0,
+            },
+        )
 
         app = monitor.get_application("app-123")
         assert app.metrics["cpu_usage"] == 75.0
@@ -449,16 +452,12 @@ class TestSparkMonitorPolling:
         # First response for listing apps
         list_response = Mock()
         list_response.status_code = 200
-        list_response.json.return_value = [
-            {"id": "app-123", "name": "test_job"}
-        ]
+        list_response.json.return_value = [{"id": "app-123", "name": "test_job"}]
 
         # Second response for app details
         detail_response = Mock()
         detail_response.status_code = 200
-        detail_response.json.return_value = {
-            "attempts": [{"completed": False}]
-        }
+        detail_response.json.return_value = {"attempts": [{"completed": False}]}
 
         mock_requests.get.side_effect = [list_response, detail_response]
 
@@ -476,15 +475,11 @@ class TestSparkMonitorPolling:
 
         list_response = Mock()
         list_response.status_code = 200
-        list_response.json.return_value = [
-            {"id": "app-456", "name": "completed_job"}
-        ]
+        list_response.json.return_value = [{"id": "app-456", "name": "completed_job"}]
 
         detail_response = Mock()
         detail_response.status_code = 200
-        detail_response.json.return_value = {
-            "attempts": [{"completed": True}]
-        }
+        detail_response.json.return_value = {"attempts": [{"completed": True}]}
 
         mock_requests.get.side_effect = [list_response, detail_response]
 

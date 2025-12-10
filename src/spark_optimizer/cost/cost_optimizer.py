@@ -115,9 +115,7 @@ class CostOptimizer:
         current_cost = current_estimate.total_cost
 
         # Generate optimization candidates
-        candidates = self._generate_candidates(
-            current_config, goal, constraints
-        )
+        candidates = self._generate_candidates(current_config, goal, constraints)
 
         # Evaluate candidates
         best_config = current_config.copy()
@@ -144,9 +142,7 @@ class CostOptimizer:
         savings_percent = (savings / current_cost * 100) if current_cost > 0 else 0
 
         # Find best instance type
-        recommended_instance = self._find_best_instance(
-            best_config, provider
-        )
+        recommended_instance = self._find_best_instance(best_config, provider)
 
         # Generate recommendations and trade-offs
         recommendations = self._generate_recommendations(
@@ -264,14 +260,16 @@ class CostOptimizer:
             num_executors = config.get("spark.executor.instances", 2)
             total_cost = instance.hourly_price * num_executors * duration_hours
 
-            comparisons.append({
-                "instance_type": instance.instance_type,
-                "vcpus": instance.vcpus,
-                "memory_gb": instance.memory_gb,
-                "hourly_price": instance.hourly_price,
-                "total_cost": round(total_cost, 4),
-                "tier": instance.tier.value,
-            })
+            comparisons.append(
+                {
+                    "instance_type": instance.instance_type,
+                    "vcpus": instance.vcpus,
+                    "memory_gb": instance.memory_gb,
+                    "hourly_price": instance.hourly_price,
+                    "total_cost": round(total_cost, 4),
+                    "tier": instance.tier.value,
+                }
+            )
 
         return comparisons
 
@@ -314,7 +312,9 @@ class CostOptimizer:
         total_interruption_prob = 1 - (1 - interruption_probability) ** duration_hours
 
         # If interrupted, we restart and pay again
-        expected_spot_cost = spot_estimate.total_cost * (1 + total_interruption_prob * 0.5)
+        expected_spot_cost = spot_estimate.total_cost * (
+            1 + total_interruption_prob * 0.5
+        )
 
         # Determine recommendation
         savings = on_demand_estimate.total_cost - expected_spot_cost
@@ -338,9 +338,21 @@ class CostOptimizer:
             "expected_savings": round(savings, 4),
             "interruption_probability": round(total_interruption_prob * 100, 1),
             "recommendations": [
-                "Enable checkpointing to handle interruptions" if strategy != "on_demand" else None,
-                "Set spark.dynamicAllocation.enabled=true for flexibility" if strategy == "mixed" else None,
-                "Consider using Spot Fleet for better availability" if strategy == "full_spot" else None,
+                (
+                    "Enable checkpointing to handle interruptions"
+                    if strategy != "on_demand"
+                    else None
+                ),
+                (
+                    "Set spark.dynamicAllocation.enabled=true for flexibility"
+                    if strategy == "mixed"
+                    else None
+                ),
+                (
+                    "Consider using Spot Fleet for better availability"
+                    if strategy == "full_spot"
+                    else None
+                ),
             ],
         }
 
@@ -427,8 +439,12 @@ class CostOptimizer:
         elif goal == OptimizationGoal.BALANCE:
             # Balance: prefer lower cost with acceptable performance
             # Use a weighted score
-            cost_score = new_estimate.total_cost / max(current_estimate.total_cost, 0.01)
-            perf_score = current_estimate.cost_per_hour / max(new_estimate.cost_per_hour, 0.01)
+            cost_score = new_estimate.total_cost / max(
+                current_estimate.total_cost, 0.01
+            )
+            perf_score = current_estimate.cost_per_hour / max(
+                new_estimate.cost_per_hour, 0.01
+            )
             return (cost_score * 0.6 + perf_score * 0.4) < 1.0
 
         else:  # BUDGET_CONSTRAINT
@@ -483,9 +499,7 @@ class CostOptimizer:
         opt_exec = optimized.get("spark.executor.instances", 2)
 
         if opt_exec < orig_exec:
-            recommendations.append(
-                f"Reduce executors from {orig_exec} to {opt_exec}"
-            )
+            recommendations.append(f"Reduce executors from {orig_exec} to {opt_exec}")
         elif opt_exec > orig_exec:
             recommendations.append(
                 f"Increase executors from {orig_exec} to {opt_exec} for better performance"
@@ -528,9 +542,7 @@ class CostOptimizer:
         opt_exec = optimized.get("spark.executor.instances", 2)
 
         if opt_exec < orig_exec:
-            trade_offs.append(
-                f"Fewer executors may increase job duration"
-            )
+            trade_offs.append(f"Fewer executors may increase job duration")
 
         orig_mem = original.get("spark.executor.memory", 4096)
         opt_mem = optimized.get("spark.executor.memory", 4096)

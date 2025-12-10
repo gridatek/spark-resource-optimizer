@@ -65,7 +65,9 @@ class JobSimilarityCalculator:
             total_weight += weight
         elif "input_size_bytes" in job1 and "input_bytes" in job2:
             # Handle job_requirements format
-            input_sim = self._size_similarity(job1["input_size_bytes"], job2["input_bytes"])
+            input_sim = self._size_similarity(
+                job1["input_size_bytes"], job2["input_bytes"]
+            )
             weight = self.weights["input_size"]
             scores.append(input_sim * weight)
             total_weight += weight
@@ -351,9 +353,9 @@ class JobSimilarityCalculator:
         target_vector = self.calculate_feature_vector(target_job)
 
         # Build feature matrix for candidates
-        candidate_vectors = np.array([
-            self.calculate_feature_vector(job) for job in candidate_jobs
-        ])
+        candidate_vectors = np.array(
+            [self.calculate_feature_vector(job) for job in candidate_jobs]
+        )
 
         if method == "cosine":
             # Normalize vectors
@@ -377,10 +379,7 @@ class JobSimilarityCalculator:
         top_indices = np.argsort(similarities)[::-1][:top_k]
 
         # Return jobs with their similarity scores
-        results = [
-            (candidate_jobs[i], float(similarities[i]))
-            for i in top_indices
-        ]
+        results = [(candidate_jobs[i], float(similarities[i])) for i in top_indices]
 
         return results
 
@@ -391,7 +390,4 @@ class JobSimilarityCalculator:
             Dictionary mapping feature names to importance scores
         """
         total_weight = sum(self.weights.values())
-        return {
-            name: weight / total_weight
-            for name, weight in self.weights.items()
-        }
+        return {name: weight / total_weight for name, weight in self.weights.items()}

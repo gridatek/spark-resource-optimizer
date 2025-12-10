@@ -96,12 +96,25 @@ def get_monitoring_status():
     """
     monitor = get_monitor()
 
-    return jsonify({
-        "monitoring_active": monitor is not None and monitor._running if monitor else False,
-        "websocket_active": _websocket_server is not None and _websocket_server._running if _websocket_server else False,
-        "websocket_port": _websocket_server.port if _websocket_server else None,
-        "connected_clients": _websocket_server.client_count if _websocket_server else 0,
-    }), 200
+    return (
+        jsonify(
+            {
+                "monitoring_active": (
+                    monitor is not None and monitor._running if monitor else False
+                ),
+                "websocket_active": (
+                    _websocket_server is not None and _websocket_server._running
+                    if _websocket_server
+                    else False
+                ),
+                "websocket_port": _websocket_server.port if _websocket_server else None,
+                "connected_clients": (
+                    _websocket_server.client_count if _websocket_server else 0
+                ),
+            }
+        ),
+        200,
+    )
 
 
 @monitoring_bp.route("/applications", methods=["GET"])
@@ -118,10 +131,15 @@ def list_monitored_applications():
 
     apps = monitor.get_applications()
 
-    return jsonify({
-        "applications": [app.to_dict() for app in apps],
-        "count": len(apps),
-    }), 200
+    return (
+        jsonify(
+            {
+                "applications": [app.to_dict() for app in apps],
+                "count": len(apps),
+            }
+        ),
+        200,
+    )
 
 
 @monitoring_bp.route("/applications/<app_id>", methods=["GET"])
@@ -175,6 +193,7 @@ def get_application_metrics(app_id: str):
     since = None
     if since_str:
         from datetime import datetime
+
         try:
             since = datetime.fromisoformat(since_str.replace("Z", "+00:00"))
         except ValueError:
@@ -182,12 +201,17 @@ def get_application_metrics(app_id: str):
 
     history = monitor.get_metric_history(app_id, metric_name, since=since)
 
-    return jsonify({
-        "app_id": app_id,
-        "metric": metric_name,
-        "points": [p.to_dict() for p in history],
-        "count": len(history),
-    }), 200
+    return (
+        jsonify(
+            {
+                "app_id": app_id,
+                "metric": metric_name,
+                "points": [p.to_dict() for p in history],
+                "count": len(history),
+            }
+        ),
+        200,
+    )
 
 
 @monitoring_bp.route("/applications/<app_id>/track", methods=["POST"])
@@ -215,10 +239,15 @@ def track_application(app_id: str):
 
     status = monitor.add_application(app_id, app_name)
 
-    return jsonify({
-        "status": "tracking",
-        "application": status.to_dict(),
-    }), 200
+    return (
+        jsonify(
+            {
+                "status": "tracking",
+                "application": status.to_dict(),
+            }
+        ),
+        200,
+    )
 
 
 @monitoring_bp.route("/applications/<app_id>/metrics", methods=["POST"])
@@ -257,11 +286,16 @@ def push_metrics(app_id: str):
 
     monitor.update_metrics(app_id, metrics)
 
-    return jsonify({
-        "status": "received",
-        "app_id": app_id,
-        "metrics_count": len(metrics),
-    }), 200
+    return (
+        jsonify(
+            {
+                "status": "received",
+                "app_id": app_id,
+                "metrics_count": len(metrics),
+            }
+        ),
+        200,
+    )
 
 
 @monitoring_bp.route("/applications/<app_id>/status", methods=["PUT"])
@@ -308,10 +342,15 @@ def update_application_status(app_id: str):
         executors=data.get("executors"),
     )
 
-    return jsonify({
-        "status": "updated",
-        "app_id": app_id,
-    }), 200
+    return (
+        jsonify(
+            {
+                "status": "updated",
+                "app_id": app_id,
+            }
+        ),
+        200,
+    )
 
 
 @monitoring_bp.route("/alerts", methods=["GET"])
@@ -333,10 +372,15 @@ def list_alerts():
 
     alerts = alert_manager.get_active_alerts(app_id=app_id)
 
-    return jsonify({
-        "alerts": [alert.to_dict() for alert in alerts],
-        "count": len(alerts),
-    }), 200
+    return (
+        jsonify(
+            {
+                "alerts": [alert.to_dict() for alert in alerts],
+                "count": len(alerts),
+            }
+        ),
+        200,
+    )
 
 
 @monitoring_bp.route("/alerts/<alert_id>", methods=["GET"])
@@ -386,10 +430,15 @@ def acknowledge_alert(alert_id: str):
     acknowledged_by = data.get("acknowledged_by", "api")
 
     if alert_manager.acknowledge_alert(alert_id, acknowledged_by):
-        return jsonify({
-            "status": "acknowledged",
-            "alert_id": alert_id,
-        }), 200
+        return (
+            jsonify(
+                {
+                    "status": "acknowledged",
+                    "alert_id": alert_id,
+                }
+            ),
+            200,
+        )
     else:
         return jsonify({"error": "Alert not found or already acknowledged"}), 404
 
@@ -410,10 +459,15 @@ def resolve_alert(alert_id: str):
         return jsonify({"error": "Alert manager not initialized"}), 503
 
     if alert_manager.resolve_alert(alert_id):
-        return jsonify({
-            "status": "resolved",
-            "alert_id": alert_id,
-        }), 200
+        return (
+            jsonify(
+                {
+                    "status": "resolved",
+                    "alert_id": alert_id,
+                }
+            ),
+            200,
+        )
     else:
         return jsonify({"error": "Alert not found or already resolved"}), 404
 
@@ -442,6 +496,7 @@ def get_alert_history():
     since = None
     if since_str:
         from datetime import datetime
+
         try:
             since = datetime.fromisoformat(since_str.replace("Z", "+00:00"))
         except ValueError:
@@ -449,10 +504,15 @@ def get_alert_history():
 
     history = alert_manager.get_alert_history(app_id=app_id, since=since, limit=limit)
 
-    return jsonify({
-        "alerts": [alert.to_dict() for alert in history],
-        "count": len(history),
-    }), 200
+    return (
+        jsonify(
+            {
+                "alerts": [alert.to_dict() for alert in history],
+                "count": len(history),
+            }
+        ),
+        200,
+    )
 
 
 @monitoring_bp.route("/alerts/rules", methods=["GET"])
@@ -469,18 +529,23 @@ def list_alert_rules():
 
     rules = alert_manager.get_rules()
 
-    return jsonify({
-        "rules": [
+    return (
+        jsonify(
             {
-                "name": rule.name,
-                "metric_name": rule.metric_name,
-                "condition": rule.condition,
-                "threshold": rule.threshold,
-                "severity": rule.severity.value,
-                "cooldown_minutes": rule.cooldown_minutes,
-                "enabled": rule.enabled,
+                "rules": [
+                    {
+                        "name": rule.name,
+                        "metric_name": rule.metric_name,
+                        "condition": rule.condition,
+                        "threshold": rule.threshold,
+                        "severity": rule.severity.value,
+                        "cooldown_minutes": rule.cooldown_minutes,
+                        "enabled": rule.enabled,
+                    }
+                    for rule in rules
+                ],
+                "count": len(rules),
             }
-            for rule in rules
-        ],
-        "count": len(rules),
-    }), 200
+        ),
+        200,
+    )

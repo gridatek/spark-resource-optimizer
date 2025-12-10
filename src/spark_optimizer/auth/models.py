@@ -23,7 +23,9 @@ class User(Base):  # type: ignore[misc,valid-type]
     username = Column(String(50), unique=True, index=True, nullable=False)
     email = Column(String(255), unique=True, index=True, nullable=False)
     password_hash = Column(String(255), nullable=False)
-    role = Column(SQLEnum(UserRole), default=UserRole.USER, nullable=False)
+    role: UserRole = Column(  # type: ignore[assignment]
+        SQLEnum(UserRole), default=UserRole.USER, nullable=False
+    )
 
     # Profile information
     full_name = Column(String(255), nullable=True)
@@ -89,7 +91,7 @@ class User(Base):  # type: ignore[misc,valid-type]
             UserRole.ADMIN: 2,
         }
 
-        user_level = role_hierarchy.get(self.role, 0)
+        user_level = role_hierarchy.get(self.role, 0)  # type: ignore[arg-type]
         required_level = role_hierarchy.get(required_role, 0)
 
         return user_level >= required_level

@@ -454,8 +454,7 @@ class TestCostOptimizerRecommendations:
         if result.savings > 0:
             # Should mention savings
             savings_mentioned = any(
-                "saving" in rec.lower() or "$" in rec
-                for rec in result.recommendations
+                "saving" in rec.lower() or "$" in rec for rec in result.recommendations
             )
             assert savings_mentioned
 
@@ -473,12 +472,10 @@ class TestCostOptimizerRecommendations:
             goal=OptimizationGoal.MINIMIZE_COST,
         )
 
-        if (result.optimized_config.get("spark.executor.instances", 20)
-                != 20):
+        if result.optimized_config.get("spark.executor.instances", 20) != 20:
             # Should mention executor change
             executor_mentioned = any(
-                "executor" in rec.lower()
-                for rec in result.recommendations
+                "executor" in rec.lower() for rec in result.recommendations
             )
             assert executor_mentioned
 
@@ -496,12 +493,10 @@ class TestCostOptimizerRecommendations:
             goal=OptimizationGoal.MINIMIZE_COST,
         )
 
-        if (result.optimized_config.get("spark.executor.instances", 20)
-                < 20):
+        if result.optimized_config.get("spark.executor.instances", 20) < 20:
             # Should warn about potential duration increase
             duration_warning = any(
-                "duration" in trade.lower()
-                for trade in result.trade_offs
+                "duration" in trade.lower() for trade in result.trade_offs
             )
             assert duration_warning
 
@@ -519,8 +514,7 @@ class TestCostOptimizerRecommendations:
             goal=OptimizationGoal.MINIMIZE_COST,
         )
 
-        if (result.optimized_config.get("spark.executor.memory", 16384)
-                < 16384):
+        if result.optimized_config.get("spark.executor.memory", 16384) < 16384:
             # Should warn about potential spilling
             memory_warning = any(
                 "memory" in trade.lower() or "spill" in trade.lower()

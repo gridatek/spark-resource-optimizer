@@ -315,10 +315,7 @@ class TestCostModel:
         )
 
         # Should recommend spot instances
-        has_spot_rec = any(
-            "spot" in rec.lower()
-            for rec in estimate.recommendations
-        )
+        has_spot_rec = any("spot" in rec.lower() for rec in estimate.recommendations)
         assert has_spot_rec
 
     def test_recommendations_shuffle_optimization(self):
@@ -336,8 +333,7 @@ class TestCostModel:
 
         # Should recommend shuffle optimization
         has_shuffle_rec = any(
-            "shuffle" in rec.lower()
-            for rec in estimate.recommendations
+            "shuffle" in rec.lower() for rec in estimate.recommendations
         )
         assert has_shuffle_rec
 
@@ -347,9 +343,11 @@ class TestCostModel:
 
         original_compute_price = model._pricing["compute"]["on_demand"]
 
-        model.set_pricing({
-            "compute": {"on_demand": 0.10},
-        })
+        model.set_pricing(
+            {
+                "compute": {"on_demand": 0.10},
+            }
+        )
 
         assert model._pricing["compute"]["on_demand"] == 0.10
 
@@ -470,11 +468,13 @@ class TestCostModelCalculations:
 
         # 8 cores should cost more than 4 cores
         compute_4 = next(
-            r.total_cost for r in estimate_4_cores.breakdown
+            r.total_cost
+            for r in estimate_4_cores.breakdown
             if r.resource_type == "compute"
         )
         compute_8 = next(
-            r.total_cost for r in estimate_8_cores.breakdown
+            r.total_cost
+            for r in estimate_8_cores.breakdown
             if r.resource_type == "compute"
         )
 
@@ -501,12 +501,10 @@ class TestCostModelCalculations:
         )
 
         memory_4 = next(
-            r.total_cost for r in estimate_4gb.breakdown
-            if r.resource_type == "memory"
+            r.total_cost for r in estimate_4gb.breakdown if r.resource_type == "memory"
         )
         memory_8 = next(
-            r.total_cost for r in estimate_8gb.breakdown
-            if r.resource_type == "memory"
+            r.total_cost for r in estimate_8gb.breakdown if r.resource_type == "memory"
         )
 
         assert memory_8 > memory_4
@@ -532,7 +530,9 @@ class TestCostModelCalculations:
         )
 
         # 2 hours should cost about 2x
-        assert estimate_2h.total_cost == pytest.approx(estimate_1h.total_cost * 2, rel=0.1)
+        assert estimate_2h.total_cost == pytest.approx(
+            estimate_1h.total_cost * 2, rel=0.1
+        )
 
     def test_cost_scales_with_executors(self):
         """Test that cost scales with number of executors."""

@@ -169,7 +169,9 @@ class MetricsCollector(BaseCollector):
             data = response.json()
 
             if data.get("status") != "success":
-                logger.warning(f"Prometheus query failed: {data.get('error', 'Unknown error')}")
+                logger.warning(
+                    f"Prometheus query failed: {data.get('error', 'Unknown error')}"
+                )
                 return []
 
             return data.get("data", {}).get("result", [])
@@ -282,19 +284,13 @@ class MetricsCollector(BaseCollector):
                     metrics.get("executor_cores", {}).get("latest", 0)
                 ),
                 # Task metrics
-                "total_tasks": int(
-                    metrics.get("task_count", {}).get("max", 0)
-                ),
+                "total_tasks": int(metrics.get("task_count", {}).get("max", 0)),
                 "duration_ms": int(
                     metrics.get("task_duration", {}).get("latest", 0) * 1000
                 ),
                 # I/O metrics
-                "input_bytes": int(
-                    metrics.get("input_bytes", {}).get("max", 0)
-                ),
-                "output_bytes": int(
-                    metrics.get("output_bytes", {}).get("max", 0)
-                ),
+                "input_bytes": int(metrics.get("input_bytes", {}).get("max", 0)),
+                "output_bytes": int(metrics.get("output_bytes", {}).get("max", 0)),
                 "shuffle_read_bytes": int(
                     metrics.get("shuffle_read", {}).get("max", 0)
                 ),
@@ -305,9 +301,7 @@ class MetricsCollector(BaseCollector):
                 "jvm_gc_time_ms": int(
                     metrics.get("gc_time", {}).get("latest", 0) * 1000
                 ),
-                "peak_memory_usage": int(
-                    metrics.get("memory_used", {}).get("max", 0)
-                ),
+                "peak_memory_usage": int(metrics.get("memory_used", {}).get("max", 0)),
                 "executor_cpu_time_ms": int(
                     metrics.get("cpu_time", {}).get("latest", 0) * 1000
                 ),
@@ -344,7 +338,11 @@ class MetricsCollector(BaseCollector):
                         "latest": numeric_values[-1] if numeric_values else 0,
                         "max": max(numeric_values) if numeric_values else 0,
                         "min": min(numeric_values) if numeric_values else 0,
-                        "avg": sum(numeric_values) / len(numeric_values) if numeric_values else 0,
+                        "avg": (
+                            sum(numeric_values) / len(numeric_values)
+                            if numeric_values
+                            else 0
+                        ),
                     }
 
         return {
@@ -360,7 +358,7 @@ class MetricsCollector(BaseCollector):
             List of application IDs
         """
         # Query for unique app_ids
-        query = 'count by (app_id) (spark_executor_count)'
+        query = "count by (app_id) (spark_executor_count)"
         results = self._query_instant(query)
 
         app_ids = []

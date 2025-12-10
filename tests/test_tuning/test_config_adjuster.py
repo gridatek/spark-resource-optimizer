@@ -90,9 +90,11 @@ class TestConfigAdjuster:
 
     def test_get_value(self):
         """Test getting a configuration value."""
-        adjuster = ConfigAdjuster({
-            "spark.executor.memory": 4096,
-        })
+        adjuster = ConfigAdjuster(
+            {
+                "spark.executor.memory": 4096,
+            }
+        )
 
         assert adjuster.get("spark.executor.memory") == 4096
         assert adjuster.get("missing.key") is None
@@ -142,9 +144,11 @@ class TestConfigAdjuster:
 
     def test_adjust_increase(self):
         """Test increasing a value."""
-        adjuster = ConfigAdjuster({
-            "spark.executor.memory": 4096,
-        })
+        adjuster = ConfigAdjuster(
+            {
+                "spark.executor.memory": 4096,
+            }
+        )
 
         change = adjuster.adjust(
             "spark.executor.memory",
@@ -158,9 +162,11 @@ class TestConfigAdjuster:
 
     def test_adjust_decrease(self):
         """Test decreasing a value."""
-        adjuster = ConfigAdjuster({
-            "spark.executor.cores": 8,
-        })
+        adjuster = ConfigAdjuster(
+            {
+                "spark.executor.cores": 8,
+            }
+        )
 
         change = adjuster.adjust(
             "spark.executor.cores",
@@ -174,9 +180,11 @@ class TestConfigAdjuster:
 
     def test_adjust_reset(self):
         """Test resetting a value to default."""
-        adjuster = ConfigAdjuster({
-            "spark.executor.memory": 16384,
-        })
+        adjuster = ConfigAdjuster(
+            {
+                "spark.executor.memory": 16384,
+            }
+        )
 
         change = adjuster.adjust(
             "spark.executor.memory",
@@ -202,9 +210,11 @@ class TestConfigAdjuster:
 
     def test_adjust_respects_constraints(self):
         """Test that adjust respects min/max constraints."""
-        adjuster = ConfigAdjuster({
-            "spark.executor.memory": 1024,
-        })
+        adjuster = ConfigAdjuster(
+            {
+                "spark.executor.memory": 1024,
+            }
+        )
 
         # Try to decrease below minimum
         change = adjuster.adjust(
@@ -218,9 +228,11 @@ class TestConfigAdjuster:
 
     def test_adjust_float_parameter(self):
         """Test adjusting float parameters."""
-        adjuster = ConfigAdjuster({
-            "spark.memory.fraction": 0.6,
-        })
+        adjuster = ConfigAdjuster(
+            {
+                "spark.memory.fraction": 0.6,
+            }
+        )
 
         change = adjuster.adjust(
             "spark.memory.fraction",
@@ -232,9 +244,11 @@ class TestConfigAdjuster:
 
     def test_rollback_single_step(self):
         """Test rolling back a single change."""
-        adjuster = ConfigAdjuster({
-            "spark.executor.memory": 4096,
-        })
+        adjuster = ConfigAdjuster(
+            {
+                "spark.executor.memory": 4096,
+            }
+        )
 
         adjuster.set("spark.executor.memory", 8192)
         adjuster.set("spark.executor.memory", 16384)
@@ -246,9 +260,11 @@ class TestConfigAdjuster:
 
     def test_rollback_multiple_steps(self):
         """Test rolling back multiple changes."""
-        adjuster = ConfigAdjuster({
-            "spark.executor.memory": 4096,
-        })
+        adjuster = ConfigAdjuster(
+            {
+                "spark.executor.memory": 4096,
+            }
+        )
 
         adjuster.set("spark.executor.memory", 8192)
         adjuster.set("spark.executor.memory", 16384)
@@ -349,9 +365,11 @@ class TestConfigAdjuster:
 
     def test_suggest_related_changes_cores(self):
         """Test suggesting related changes for cores."""
-        adjuster = ConfigAdjuster({
-            "spark.executor.instances": 5,
-        })
+        adjuster = ConfigAdjuster(
+            {
+                "spark.executor.instances": 5,
+            }
+        )
 
         suggestions = adjuster.suggest_related_changes(
             "spark.executor.cores",
@@ -364,9 +382,11 @@ class TestConfigAdjuster:
 
     def test_suggest_related_changes_instances_dynamic(self):
         """Test suggesting related changes for instances with dynamic allocation."""
-        adjuster = ConfigAdjuster({
-            "spark.dynamicAllocation.enabled": True,
-        })
+        adjuster = ConfigAdjuster(
+            {
+                "spark.dynamicAllocation.enabled": True,
+            }
+        )
 
         suggestions = adjuster.suggest_related_changes(
             "spark.executor.instances",
@@ -378,11 +398,13 @@ class TestConfigAdjuster:
 
     def test_to_spark_submit_args(self):
         """Test converting to spark-submit arguments."""
-        adjuster = ConfigAdjuster({
-            "spark.executor.memory": 4096,
-            "spark.executor.cores": 4,
-            "spark.shuffle.compress": True,
-        })
+        adjuster = ConfigAdjuster(
+            {
+                "spark.executor.memory": 4096,
+                "spark.executor.cores": 4,
+                "spark.shuffle.compress": True,
+            }
+        )
 
         args = adjuster.to_spark_submit_args()
 

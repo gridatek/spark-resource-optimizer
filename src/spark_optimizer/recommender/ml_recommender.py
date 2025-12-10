@@ -249,7 +249,7 @@ class MLRecommender(BaseRecommender):
             Tuple of (feature_matrix, target_dict)
         """
         X_list = []
-        y_dict = {field: [] for field in self.TARGET_FIELDS}
+        y_dict_list: Dict[str, List[Any]] = {field: [] for field in self.TARGET_FIELDS}
 
         for job in jobs:
             # Extract features
@@ -258,10 +258,12 @@ class MLRecommender(BaseRecommender):
 
             # Extract targets
             for field in self.TARGET_FIELDS:
-                y_dict[field].append(job.get(field, 0))
+                y_dict_list[field].append(job.get(field, 0))
 
         X = np.array(X_list)
-        y_dict = {field: np.array(values) for field, values in y_dict.items()}
+        y_dict: Dict[str, np.ndarray] = {
+            field: np.array(values) for field, values in y_dict_list.items()
+        }
 
         return X, y_dict
 

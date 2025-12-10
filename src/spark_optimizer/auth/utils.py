@@ -96,9 +96,7 @@ def _create_jwt(payload: dict, secret: str) -> str:
     payload_b64 = _base64url_encode(json.dumps(payload).encode())
 
     message = f"{header_b64}.{payload_b64}"
-    signature = hmac.new(
-        secret.encode(), message.encode(), hashlib.sha256
-    ).digest()
+    signature = hmac.new(secret.encode(), message.encode(), hashlib.sha256).digest()
     signature_b64 = _base64url_encode(signature)
 
     return f"{message}.{signature_b64}"

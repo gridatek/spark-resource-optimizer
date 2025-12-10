@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 try:
     import websockets
     from websockets.server import serve
+
     WEBSOCKETS_AVAILABLE = True
 except ImportError:
     WEBSOCKETS_AVAILABLE = False
@@ -27,7 +28,9 @@ class WebSocketServer:
     - Alerts and notifications
     """
 
-    def __init__(self, host: str = "0.0.0.0", port: int = 8765):
+    def __init__(
+        self, host: str = "127.0.0.1", port: int = 8765
+    ):  # Changed from 0.0.0.0 for security
         """Initialize the WebSocket server.
 
         Args:
@@ -53,7 +56,9 @@ class WebSocketServer:
     def start(self) -> None:
         """Start the WebSocket server in a background thread."""
         if not WEBSOCKETS_AVAILABLE:
-            logger.error("Cannot start WebSocket server: websockets library not available")
+            logger.error(
+                "Cannot start WebSocket server: websockets library not available"
+            )
             return
 
         if self._running:

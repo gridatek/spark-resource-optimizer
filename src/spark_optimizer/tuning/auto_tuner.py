@@ -249,12 +249,16 @@ class AutoTuner:
             if app_id in self._active_sessions:
                 existing = self._sessions.get(self._active_sessions[app_id])
                 if existing and existing.status == "active":
-                    logger.warning(f"Active session exists for {app_id}, returning existing")
+                    logger.warning(
+                        f"Active session exists for {app_id}, returning existing"
+                    )
                     return existing
 
             # Create new session
             self._session_counter += 1
-            session_id = f"tune-{self._session_counter}-{int(datetime.utcnow().timestamp())}"
+            session_id = (
+                f"tune-{self._session_counter}-{int(datetime.utcnow().timestamp())}"
+            )
 
             session = TuningSession(
                 session_id=session_id,
@@ -345,11 +349,13 @@ class AutoTuner:
                 return []
 
             # Record metrics
-            session.metrics_history.append({
-                "iteration": session.iterations,
-                "timestamp": datetime.utcnow().isoformat(),
-                "metrics": current_metrics.copy(),
-            })
+            session.metrics_history.append(
+                {
+                    "iteration": session.iterations,
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "metrics": current_metrics.copy(),
+                }
+            )
 
             # Get current target metric value
             target_value = current_metrics.get(session.target_metric)
@@ -363,15 +369,21 @@ class AutoTuner:
                 session.best_metric_value = target_value
                 session.best_config = session.current_config.copy()
                 improved = True
-            elif self._is_better(target_value, session.best_metric_value, session.target_metric):
-                improvement = abs(target_value - session.best_metric_value) / max(abs(session.best_metric_value), 1)
+            elif self._is_better(
+                target_value, session.best_metric_value, session.target_metric
+            ):
+                improvement = abs(target_value - session.best_metric_value) / max(
+                    abs(session.best_metric_value), 1
+                )
                 session.best_metric_value = target_value
                 session.best_config = session.current_config.copy()
                 improved = True
 
                 # Check convergence
                 if improvement < self._convergence_threshold:
-                    logger.info(f"Session {session_id} converged (improvement: {improvement:.4f})")
+                    logger.info(
+                        f"Session {session_id} converged (improvement: {improvement:.4f})"
+                    )
                     session.status = "completed"
                     session.ended_at = datetime.utcnow()
                     return []
@@ -542,12 +554,14 @@ class AutoTuner:
                 new_value = min(current + step, config.max_value)
 
                 if new_value != current:
-                    adjustments.append(TuningAdjustment(
-                        parameter=param,
-                        old_value=current,
-                        new_value=new_value,
-                        reason=f"Memory spilling detected (ratio: {memory_spill:.2f})",
-                    ))
+                    adjustments.append(
+                        TuningAdjustment(
+                            parameter=param,
+                            old_value=current,
+                            new_value=new_value,
+                            reason=f"Memory spilling detected (ratio: {memory_spill:.2f})",
+                        )
+                    )
 
         # 2. GC pressure
         gc_time_percent = metrics.get("gc_time_percent", 0)
@@ -562,12 +576,14 @@ class AutoTuner:
                 new_value = max(current - step, config.min_value)
 
                 if new_value != current:
-                    adjustments.append(TuningAdjustment(
-                        parameter=param,
-                        old_value=current,
-                        new_value=round(new_value, 2),
-                        reason=f"High GC time ({gc_time_percent:.1f}%)",
-                    ))
+                    adjustments.append(
+                        TuningAdjustment(
+                            parameter=param,
+                            old_value=current,
+                            new_value=round(new_value, 2),
+                            reason=f"High GC time ({gc_time_percent:.1f}%)",
+                        )
+                    )
 
         # 3. CPU underutilization
         cpu_utilization = metrics.get("cpu_utilization", 100)
@@ -582,12 +598,14 @@ class AutoTuner:
                 new_value = min(current + step, config.max_value)
 
                 if new_value != current:
-                    adjustments.append(TuningAdjustment(
-                        parameter=param,
-                        old_value=current,
-                        new_value=new_value,
-                        reason=f"Low CPU utilization ({cpu_utilization:.1f}%)",
-                    ))
+                    adjustments.append(
+                        TuningAdjustment(
+                            parameter=param,
+                            old_value=current,
+                            new_value=new_value,
+                            reason=f"Low CPU utilization ({cpu_utilization:.1f}%)",
+                        )
+                    )
 
         # 4. Shuffle performance
         shuffle_spill_ratio = metrics.get("shuffle_spill_ratio", 0)
@@ -602,12 +620,14 @@ class AutoTuner:
                 new_value = min(current + step, config.max_value)
 
                 if new_value != current:
-                    adjustments.append(TuningAdjustment(
-                        parameter=param,
-                        old_value=current,
-                        new_value=new_value,
-                        reason=f"High shuffle spill ratio ({shuffle_spill_ratio:.2f})",
-                    ))
+                    adjustments.append(
+                        TuningAdjustment(
+                            parameter=param,
+                            old_value=current,
+                            new_value=new_value,
+                            reason=f"High shuffle spill ratio ({shuffle_spill_ratio:.2f})",
+                        )
+                    )
 
         # 5. Task failures / stragglers
         task_failure_rate = metrics.get("task_failure_rate", 0)
@@ -622,12 +642,14 @@ class AutoTuner:
                 new_value = max(current - step, config.min_value)
 
                 if new_value != current:
-                    adjustments.append(TuningAdjustment(
-                        parameter=param,
-                        old_value=current,
-                        new_value=new_value,
-                        reason=f"High task failure rate ({task_failure_rate:.1%})",
-                    ))
+                    adjustments.append(
+                        TuningAdjustment(
+                            parameter=param,
+                            old_value=current,
+                            new_value=new_value,
+                            reason=f"High task failure rate ({task_failure_rate:.1%})",
+                        )
+                    )
 
         # 6. Cost optimization (if targeting cost)
         if session.target_metric == "cost":
@@ -645,12 +667,14 @@ class AutoTuner:
                     new_value = max(current - 1, config.min_value)
 
                     if new_value != current:
-                        adjustments.append(TuningAdjustment(
-                            parameter=param,
-                            old_value=current,
-                            new_value=new_value,
-                            reason="Cost optimization - reducing executors",
-                        ))
+                        adjustments.append(
+                            TuningAdjustment(
+                                parameter=param,
+                                old_value=current,
+                                new_value=new_value,
+                                reason="Cost optimization - reducing executors",
+                            )
+                        )
 
         return adjustments
 

@@ -137,9 +137,15 @@ class ConfigAdjuster:
 
     # Interdependent parameters that should be adjusted together
     RELATED_PARAMS = {
-        "spark.executor.memory": ["spark.memory.fraction", "spark.executor.memoryOverhead"],
+        "spark.executor.memory": [
+            "spark.memory.fraction",
+            "spark.executor.memoryOverhead",
+        ],
         "spark.executor.cores": ["spark.task.cpus", "spark.default.parallelism"],
-        "spark.executor.instances": ["spark.dynamicAllocation.minExecutors", "spark.dynamicAllocation.maxExecutors"],
+        "spark.executor.instances": [
+            "spark.dynamicAllocation.minExecutors",
+            "spark.dynamicAllocation.maxExecutors",
+        ],
     }
 
     def __init__(self, initial_config: Optional[Dict] = None):
@@ -457,7 +463,9 @@ class ConfigAdjuster:
         elif parameter == "spark.executor.instances":
             # If using dynamic allocation, update min/max
             if self._config.get("spark.dynamicAllocation.enabled"):
-                suggestions["spark.dynamicAllocation.minExecutors"] = max(1, new_value // 2)
+                suggestions["spark.dynamicAllocation.minExecutors"] = max(
+                    1, new_value // 2
+                )
                 suggestions["spark.dynamicAllocation.maxExecutors"] = new_value * 2
 
         return suggestions

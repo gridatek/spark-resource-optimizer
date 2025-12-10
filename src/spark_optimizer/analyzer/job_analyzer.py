@@ -1,6 +1,6 @@
 """Job analysis and feature extraction."""
 
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from datetime import datetime
 import statistics
 
@@ -88,15 +88,15 @@ class JobAnalyzer:
 
         # Normalize throughput to 0-1 scale (assume 100 MB/s is optimal)
         optimal_throughput = 100 * 1024 * 1024 / 1000  # 100 MB/s in bytes/ms
-        io_efficiency = min(1.0, throughput / optimal_throughput) if optimal_throughput > 0 else 0.0
+        io_efficiency = (
+            min(1.0, throughput / optimal_throughput) if optimal_throughput > 0 else 0.0
+        )
 
         # Calculate shuffle efficiency
         shuffle_read = job_data.get("shuffle_read_bytes", 0)
         shuffle_write = job_data.get("shuffle_write_bytes", 0)
         shuffle_ratio = (
-            (shuffle_read + shuffle_write) / input_bytes
-            if input_bytes > 0
-            else 0.0
+            (shuffle_read + shuffle_write) / input_bytes if input_bytes > 0 else 0.0
         )
         # Lower shuffle ratio is better, invert for efficiency score
         shuffle_efficiency = max(0.0, 1.0 - min(1.0, shuffle_ratio))
@@ -107,7 +107,13 @@ class JobAnalyzer:
             "io_efficiency": round(io_efficiency, 3),
             "shuffle_efficiency": round(shuffle_efficiency, 3),
             "overall_efficiency": round(
-                (cpu_efficiency + memory_efficiency + io_efficiency + shuffle_efficiency) / 4,
+                (
+                    cpu_efficiency
+                    + memory_efficiency
+                    + io_efficiency
+                    + shuffle_efficiency
+                )
+                / 4,
                 3,
             ),
         }
@@ -131,7 +137,9 @@ class JobAnalyzer:
 
         if executor_run_time_ms > 0:
             total_available = executor_run_time_ms * num_executors * executor_cores
-            cpu_utilization = executor_cpu_time_ms / total_available if total_available > 0 else 0
+            cpu_utilization = (
+                executor_cpu_time_ms / total_available if total_available > 0 else 0
+            )
 
             if cpu_utilization > 0.85:
                 bottlenecks.append("CPU_BOUND")
@@ -144,7 +152,9 @@ class JobAnalyzer:
         input_bytes = job_data.get("input_bytes", 1)
 
         if memory_spilled > 0 or disk_spilled > 0:
-            spill_ratio = (memory_spilled + disk_spilled) / input_bytes if input_bytes > 0 else 0
+            spill_ratio = (
+                (memory_spilled + disk_spilled) / input_bytes if input_bytes > 0 else 0
+            )
             if spill_ratio > self.HIGH_SPILL_RATIO:
                 bottlenecks.append("MEMORY_PRESSURE")
 
@@ -165,7 +175,9 @@ class JobAnalyzer:
 
         # Check for task parallelism
         total_tasks = job_data.get("total_tasks", 0)
-        optimal_tasks = num_executors * executor_cores * 2  # Rule of thumb: 2-3 tasks per core
+        optimal_tasks = (
+            num_executors * executor_cores * 2
+        )  # Rule of thumb: 2-3 tasks per core
         if total_tasks > 0 and optimal_tasks > 0:
             parallelism_ratio = total_tasks / optimal_tasks
             if parallelism_ratio < self.LOW_PARALLELISM_RATIO:
@@ -196,55 +208,65 @@ class JobAnalyzer:
             # High amplification might indicate skew
             amplification = shuffle_write / input_bytes
             if amplification > 2.0:
-                issues.append({
-                    "type": "DATA_SKEW",
-                    "severity": "HIGH" if amplification > 5.0 else "MEDIUM",
-                    "description": f"High data amplification ({amplification:.1f}x) may indicate data skew",
-                    "recommendation": "Consider salting keys or repartitioning data",
-                })
+                issues.append(
+                    {
+                        "type": "DATA_SKEW",
+                        "severity": "HIGH" if amplification > 5.0 else "MEDIUM",
+                        "description": f"High data amplification ({amplification:.1f}x) may indicate data skew",
+                        "recommendation": "Consider salting keys or repartitioning data",
+                    }
+                )
 
         # Excessive spill to disk
         disk_spilled = job_data.get("disk_spilled_bytes", 0)
         memory_spilled = job_data.get("memory_spilled_bytes", 0)
         if disk_spilled > 0:
-            spill_gb = disk_spilled / (1024 ** 3)
-            issues.append({
-                "type": "DISK_SPILL",
-                "severity": "HIGH" if spill_gb > 10 else "MEDIUM",
-                "description": f"Spilled {spill_gb:.2f} GB to disk due to memory pressure",
-                "recommendation": "Increase executor memory or reduce partition size",
-            })
+            spill_gb = disk_spilled / (1024**3)
+            issues.append(
+                {
+                    "type": "DISK_SPILL",
+                    "severity": "HIGH" if spill_gb > 10 else "MEDIUM",
+                    "description": f"Spilled {spill_gb:.2f} GB to disk due to memory pressure",
+                    "recommendation": "Increase executor memory or reduce partition size",
+                }
+            )
 
         if memory_spilled > 0:
-            spill_gb = memory_spilled / (1024 ** 3)
-            issues.append({
-                "type": "MEMORY_SPILL",
-                "severity": "MEDIUM",
-                "description": f"Spilled {spill_gb:.2f} GB from memory",
-                "recommendation": "Increase spark.memory.fraction or executor memory",
-            })
+            spill_gb = memory_spilled / (1024**3)
+            issues.append(
+                {
+                    "type": "MEMORY_SPILL",
+                    "severity": "MEDIUM",
+                    "description": f"Spilled {spill_gb:.2f} GB from memory",
+                    "recommendation": "Increase spark.memory.fraction or executor memory",
+                }
+            )
 
         # Task failures
         failed_tasks = job_data.get("failed_tasks", 0)
         total_tasks = job_data.get("total_tasks", 1)
         if failed_tasks > 0:
             failure_rate = failed_tasks / total_tasks if total_tasks > 0 else 0
-            issues.append({
-                "type": "TASK_FAILURES",
-                "severity": "HIGH" if failure_rate > 0.05 else "MEDIUM",
-                "description": f"{failed_tasks} tasks failed ({failure_rate:.1%} failure rate)",
-                "recommendation": "Check executor logs for OOM errors or data issues",
-            })
+            issues.append(
+                {
+                    "type": "TASK_FAILURES",
+                    "severity": "HIGH" if failure_rate > 0.05 else "MEDIUM",
+                    "description": f"{failed_tasks} tasks failed ({failure_rate:.1%} failure rate)",
+                    "recommendation": "Check executor logs for OOM errors or data issues",
+                }
+            )
 
         # Stage failures
         failed_stages = job_data.get("failed_stages", 0)
         if failed_stages > 0:
-            issues.append({
-                "type": "STAGE_FAILURES",
-                "severity": "HIGH",
-                "description": f"{failed_stages} stages failed",
-                "recommendation": "Review stage details for root cause",
-            })
+            issues.append(
+                {
+                    "type": "STAGE_FAILURES",
+                    "severity": "HIGH",
+                    "description": f"{failed_stages} stages failed",
+                    "recommendation": "Review stage details for root cause",
+                }
+            )
 
         # Insufficient parallelism
         num_executors = job_data.get("num_executors", 1)
@@ -252,12 +274,14 @@ class JobAnalyzer:
         optimal_partitions = num_executors * executor_cores * 2
 
         if total_tasks > 0 and total_tasks < optimal_partitions / 2:
-            issues.append({
-                "type": "LOW_PARALLELISM",
-                "severity": "MEDIUM",
-                "description": f"Only {total_tasks} tasks for {num_executors * executor_cores} cores",
-                "recommendation": "Increase partition count with repartition() or coalesce()",
-            })
+            issues.append(
+                {
+                    "type": "LOW_PARALLELISM",
+                    "severity": "MEDIUM",
+                    "description": f"Only {total_tasks} tasks for {num_executors * executor_cores} cores",
+                    "recommendation": "Increase partition count with repartition() or coalesce()",
+                }
+            )
 
         # High GC time
         jvm_gc_time_ms = job_data.get("jvm_gc_time_ms", 0)
@@ -265,12 +289,14 @@ class JobAnalyzer:
         if jvm_gc_time_ms > 0 and executor_run_time_ms > 0:
             gc_ratio = jvm_gc_time_ms / executor_run_time_ms
             if gc_ratio > self.HIGH_GC_RATIO:
-                issues.append({
-                    "type": "HIGH_GC_TIME",
-                    "severity": "MEDIUM" if gc_ratio < 0.2 else "HIGH",
-                    "description": f"GC time is {gc_ratio:.1%} of execution time",
-                    "recommendation": "Increase executor memory or tune GC settings",
-                })
+                issues.append(
+                    {
+                        "type": "HIGH_GC_TIME",
+                        "severity": "MEDIUM" if gc_ratio < 0.2 else "HIGH",
+                        "description": f"GC time is {gc_ratio:.1%} of execution time",
+                        "recommendation": "Increase executor memory or tune GC settings",
+                    }
+                )
 
         return issues
 
@@ -324,7 +350,7 @@ class JobAnalyzer:
         Returns:
             Dictionary containing comparison results
         """
-        comparison = {
+        comparison: Dict[str, Any] = {
             "job1_id": job1.get("app_id"),
             "job2_id": job2.get("app_id"),
             "resource_comparison": {},
@@ -412,7 +438,9 @@ class JobAnalyzer:
                 "Job 2 has better overall resource efficiency. "
                 "Review its configuration for optimization opportunities."
             )
-        elif efficiency1["overall_efficiency"] > efficiency2["overall_efficiency"] + 0.1:
+        elif (
+            efficiency1["overall_efficiency"] > efficiency2["overall_efficiency"] + 0.1
+        ):
             recommendations.append(
                 "Job 1 has better overall resource efficiency. "
                 "Review its configuration for optimization opportunities."
@@ -454,10 +482,26 @@ class JobAnalyzer:
         # Calculate average efficiency
         efficiencies = [self._calculate_resource_efficiency(j) for j in jobs]
         avg_efficiency = {
-            "cpu_efficiency": statistics.mean([e["cpu_efficiency"] for e in efficiencies]) if efficiencies else 0,
-            "memory_efficiency": statistics.mean([e["memory_efficiency"] for e in efficiencies]) if efficiencies else 0,
-            "io_efficiency": statistics.mean([e["io_efficiency"] for e in efficiencies]) if efficiencies else 0,
-            "overall_efficiency": statistics.mean([e["overall_efficiency"] for e in efficiencies]) if efficiencies else 0,
+            "cpu_efficiency": (
+                statistics.mean([e["cpu_efficiency"] for e in efficiencies])
+                if efficiencies
+                else 0
+            ),
+            "memory_efficiency": (
+                statistics.mean([e["memory_efficiency"] for e in efficiencies])
+                if efficiencies
+                else 0
+            ),
+            "io_efficiency": (
+                statistics.mean([e["io_efficiency"] for e in efficiencies])
+                if efficiencies
+                else 0
+            ),
+            "overall_efficiency": (
+                statistics.mean([e["overall_efficiency"] for e in efficiencies])
+                if efficiencies
+                else 0
+            ),
         }
 
         # Identify common issues
@@ -469,9 +513,11 @@ class JobAnalyzer:
                 all_issues[issue_type] = all_issues.get(issue_type, 0) + 1
 
         common_issues = sorted(
-            [{"type": k, "count": v, "percentage": v / len(jobs) * 100}
-             for k, v in all_issues.items()],
-            key=lambda x: x["count"],
+            [
+                {"type": k, "count": v, "percentage": v / len(jobs) * 100}
+                for k, v in all_issues.items()
+            ],
+            key=lambda x: x["count"],  # type: ignore[arg-type, return-value]
             reverse=True,
         )
 
@@ -484,8 +530,12 @@ class JobAnalyzer:
             "std_duration_ms": statistics.stdev(durations) if len(durations) > 1 else 0,
             "total_input_bytes": sum(input_bytes_list),
             "total_output_bytes": sum(output_bytes_list),
-            "avg_input_bytes": statistics.mean(input_bytes_list) if input_bytes_list else 0,
-            "avg_output_bytes": statistics.mean(output_bytes_list) if output_bytes_list else 0,
+            "avg_input_bytes": (
+                statistics.mean(input_bytes_list) if input_bytes_list else 0
+            ),
+            "avg_output_bytes": (
+                statistics.mean(output_bytes_list) if output_bytes_list else 0
+            ),
             "task_success_rate": round(success_rate, 4),
             "avg_efficiency": avg_efficiency,
             "common_issues": common_issues[:5],  # Top 5 issues

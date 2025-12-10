@@ -6,7 +6,12 @@ from unittest.mock import MagicMock, patch
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from spark_optimizer.storage.models import Base, SparkApplication, SparkStage, JobRecommendation
+from spark_optimizer.storage.models import (
+    Base,
+    SparkApplication,
+    SparkStage,
+    JobRecommendation,
+)
 from spark_optimizer.storage.repository import (
     SparkApplicationRepository,
     JobRecommendationRepository,
@@ -153,7 +158,9 @@ class TestSparkApplicationRepository:
         for app in results:
             assert 4 * 1024**3 <= app.input_bytes <= 15 * 1024**3
 
-    def test_search_similar_by_input_bytes_with_tolerance(self, session, sample_app_data):
+    def test_search_similar_by_input_bytes_with_tolerance(
+        self, session, sample_app_data
+    ):
         """Test searching for applications with input size tolerance."""
         repo = SparkApplicationRepository(session)
 
@@ -374,7 +381,9 @@ class TestJobRecommendationRepository:
         assert rec is not None
         assert rec.job_signature == "sig-test-001"
 
-    def test_get_by_signature_returns_most_recent(self, session, sample_recommendation_data):
+    def test_get_by_signature_returns_most_recent(
+        self, session, sample_recommendation_data
+    ):
         """Test that get_by_signature returns the most recent recommendation."""
         repo = JobRecommendationRepository(session)
 
@@ -456,7 +465,9 @@ class TestJobRecommendationRepository:
 
         assert len(results) == 3
 
-    def test_get_recent_recommendations_with_feedback(self, session, sample_recommendation_data):
+    def test_get_recent_recommendations_with_feedback(
+        self, session, sample_recommendation_data
+    ):
         """Test getting recent recommendations with feedback filter."""
         repo = JobRecommendationRepository(session)
 
@@ -492,7 +503,9 @@ class TestJobRecommendationRepository:
 
         assert avg == pytest.approx(0.85, rel=0.01)
 
-    def test_get_average_feedback_no_feedback(self, session, sample_recommendation_data):
+    def test_get_average_feedback_no_feedback(
+        self, session, sample_recommendation_data
+    ):
         """Test average feedback returns 0.0 when no feedback exists."""
         repo = JobRecommendationRepository(session)
 

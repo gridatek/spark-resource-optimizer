@@ -91,7 +91,9 @@ class TestJobSimilarityCalculator:
 
         assert similarity == pytest.approx(1.0, rel=0.01)
 
-    def test_calculate_similarity_similar_jobs(self, calculator, sample_job1, sample_job2):
+    def test_calculate_similarity_similar_jobs(
+        self, calculator, sample_job1, sample_job2
+    ):
         """Test similarity between similar jobs is high."""
         similarity = calculator.calculate_similarity(sample_job1, sample_job2)
 
@@ -99,7 +101,9 @@ class TestJobSimilarityCalculator:
         assert similarity > 0.7
         assert similarity < 1.0
 
-    def test_calculate_similarity_dissimilar_jobs(self, calculator, sample_job1, dissimilar_job):
+    def test_calculate_similarity_dissimilar_jobs(
+        self, calculator, sample_job1, dissimilar_job
+    ):
         """Test similarity between dissimilar jobs is low."""
         similarity = calculator.calculate_similarity(sample_job1, dissimilar_job)
 
@@ -113,7 +117,9 @@ class TestJobSimilarityCalculator:
 
         assert sim1 == pytest.approx(sim2, rel=0.01)
 
-    def test_calculate_similarity_with_custom_weights(self, custom_weights, sample_job1, sample_job2):
+    def test_calculate_similarity_with_custom_weights(
+        self, custom_weights, sample_job1, sample_job2
+    ):
         """Test similarity calculation with custom weights."""
         calculator = JobSimilarityCalculator(weights=custom_weights)
 
@@ -366,7 +372,9 @@ class TestJobSimilarityCalculator:
         # Results should be sorted by similarity
         assert results[0][1] >= results[1][1]
 
-    def test_find_similar_jobs_vectorized_empty_candidates(self, calculator, sample_job1):
+    def test_find_similar_jobs_vectorized_empty_candidates(
+        self, calculator, sample_job1
+    ):
         """Test vectorized search with empty candidates."""
         results = calculator.find_similar_jobs_vectorized(sample_job1, [], top_k=5)
 
