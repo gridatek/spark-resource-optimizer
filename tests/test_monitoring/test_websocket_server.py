@@ -28,7 +28,7 @@ class TestWebSocketServerBasic:
         """Test server with default values."""
         server = WebSocketServer()
 
-        assert server.host == "0.0.0.0"
+        assert server.host == "127.0.0.1"
         assert server.port == 8765
 
     def test_client_count(self):
