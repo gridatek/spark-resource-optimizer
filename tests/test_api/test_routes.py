@@ -370,7 +370,7 @@ class TestAPIRoutes:
 
         mock_repo = MagicMock()
         with patch(
-            "spark_optimizer.api.routes.JobRecommendationRepository",
+            "spark_optimizer.storage.repository.JobRecommendationRepository",
             return_value=mock_repo,
         ):
             request_data = {

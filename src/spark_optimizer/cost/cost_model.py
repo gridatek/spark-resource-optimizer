@@ -158,6 +158,7 @@ class CostModel:
         shuffle_bytes: int = 0,
         input_bytes: int = 0,
         output_bytes: int = 0,
+        _skip_comparisons: bool = False,
     ) -> CostEstimate:
         """Estimate the cost of a Spark job.
 
@@ -260,38 +261,44 @@ class CostModel:
             )
             total_cost += network_cost
 
-        # Calculate potential savings
-        spot_cost = (
-            self.estimate_job_cost(
-                num_executors,
-                executor_cores,
-                executor_memory_mb,
-                driver_memory_mb,
-                duration_hours,
-                InstanceType.SPOT,
-                shuffle_bytes,
-                input_bytes,
-                output_bytes,
-            ).total_cost
-            if instance_type != InstanceType.SPOT
-            else total_cost
-        )
+        # Calculate potential savings (only if not already calculating comparisons)
+        if _skip_comparisons:
+            spot_cost = total_cost
+            reserved_cost = total_cost
+        else:
+            spot_cost = (
+                self.estimate_job_cost(
+                    num_executors,
+                    executor_cores,
+                    executor_memory_mb,
+                    driver_memory_mb,
+                    duration_hours,
+                    InstanceType.SPOT,
+                    shuffle_bytes,
+                    input_bytes,
+                    output_bytes,
+                    _skip_comparisons=True,
+                ).total_cost
+                if instance_type != InstanceType.SPOT
+                else total_cost
+            )
 
-        reserved_cost = (
-            self.estimate_job_cost(
-                num_executors,
-                executor_cores,
-                executor_memory_mb,
-                driver_memory_mb,
-                duration_hours,
-                InstanceType.RESERVED,
-                shuffle_bytes,
-                input_bytes,
-                output_bytes,
-            ).total_cost
-            if instance_type != InstanceType.RESERVED
-            else total_cost
-        )
+            reserved_cost = (
+                self.estimate_job_cost(
+                    num_executors,
+                    executor_cores,
+                    executor_memory_mb,
+                    driver_memory_mb,
+                    duration_hours,
+                    InstanceType.RESERVED,
+                    shuffle_bytes,
+                    input_bytes,
+                    output_bytes,
+                    _skip_comparisons=True,
+                ).total_cost
+                if instance_type != InstanceType.RESERVED
+                else total_cost
+            )
 
         spot_savings = (
             total_cost - spot_cost if instance_type == InstanceType.ON_DEMAND else 0
