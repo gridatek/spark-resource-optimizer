@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { SparkJob, JobListResponse } from '../models/job.model';
@@ -13,10 +13,8 @@ import { ConfigService } from './config.service';
   providedIn: 'root'
 })
 export class ApiService {
-  constructor(
-    private http: HttpClient,
-    private configService: ConfigService
-  ) {}
+  private readonly http = inject(HttpClient);
+  private readonly configService = inject(ConfigService);
 
   private getApiUrl(): string {
     return this.configService.apiUrl;
@@ -59,10 +57,7 @@ export class ApiService {
 
   // Recommendations
   getRecommendation(request: RecommendationRequest): Observable<RecommendationResponse> {
-    const url = `${this.getApiUrl()}/api/v1/recommend`;
-    console.log('Making recommendation request to:', url);
-    console.log('Request payload:', request);
-    return this.http.post<RecommendationResponse>(url, request);
+    return this.http.post<RecommendationResponse>(`${this.getApiUrl()}/api/v1/recommend`, request);
   }
 
   // Feedback

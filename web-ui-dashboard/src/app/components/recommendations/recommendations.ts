@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, signal, computed } from '@angular/core';
+import { Component, ChangeDetectionStrategy, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { BaseChartDirective } from 'ng2-charts';
@@ -93,10 +93,10 @@ import {
             <div class="flex gap-4 mt-8">
               <button
                 type="submit"
-                [disabled]="loading || !recForm.form.valid"
+                [disabled]="loading() || !recForm.form.valid"
                 class="px-6 py-3 bg-blue-500 text-white rounded-md font-medium hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
               >
-                {{ loading! ? 'Getting Recommendation...' : 'Get Recommendation' }}
+                {{ loading() ? 'Getting Recommendation...' : 'Get Recommendation' }}
               </button>
               <button
                 type="button"
@@ -394,7 +394,7 @@ export class Recommendations {
     };
   });
 
-  constructor(private apiService: ApiService) {}
+  private readonly apiService = inject(ApiService);
 
   getRecommendation(): void {
     if (!this.formData.input_size_gb || this.formData.input_size_gb <= 0) {
@@ -416,14 +416,11 @@ export class Recommendations {
 
     this.apiService.getRecommendation(apiRequest).subscribe({
       next: (response) => {
-        console.log('Received recommendation response:', response);
         this.recommendation.set(response);
         this.loading.set(false);
-        console.log('Updated component state - loading:', this.loading(), 'recommendation:', this.recommendation());
       },
-      error: (err) => {
+      error: () => {
         this.error.set('Failed to get recommendation. Please try again.');
-        console.error('Error getting recommendation:', err);
         this.loading.set(false);
       }
     });
@@ -488,8 +485,8 @@ export class Recommendations {
     navigator.clipboard.writeText(command).then(() => {
       this.copied.set(true);
       setTimeout(() => this.copied.set(false), 2000);
-    }).catch(err => {
-      console.error('Failed to copy:', err);
+    }).catch(() => {
+      // Clipboard API may not be available in all contexts
     });
   }
 

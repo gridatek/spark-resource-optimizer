@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 
@@ -10,17 +10,16 @@ export interface AppConfig {
   providedIn: 'root'
 })
 export class ConfigService {
+  private readonly http = inject(HttpClient);
   private config: AppConfig | null = null;
-
-  constructor(private http: HttpClient) {}
 
   async loadConfig(): Promise<void> {
     try {
       this.config = await firstValueFrom(
         this.http.get<AppConfig>('/config.json')
       );
-    } catch (error) {
-      console.error('Failed to load config.json, using defaults:', error);
+    } catch {
+      // Fallback to default config if config.json fails to load
       this.config = {
         apiUrl: 'http://localhost:8080'
       };

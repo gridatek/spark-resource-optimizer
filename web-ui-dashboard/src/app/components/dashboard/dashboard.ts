@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, signal } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ApiService } from '../../services/api.service';
 import { SparkJob } from '../../models/job.model';
@@ -32,7 +32,7 @@ import { switchMap } from 'rxjs/operators';
       </header>
 
       <!-- Loading State -->
-      @if (loading) {
+      @if (loading()) {
         <div class="text-center py-16">
           <div class="w-12 h-12 border-4 border-gray-200 border-t-blue-500 rounded-full animate-spin mx-auto mb-4"></div>
           <p class="text-gray-600">Loading dashboard data...</p>
@@ -40,9 +40,9 @@ import { switchMap } from 'rxjs/operators';
       }
 
       <!-- Error State -->
-      @if (error) {
+      @if (error()) {
         <div class="text-center py-16">
-          <p class="text-red-600 text-lg mb-4">{{ error }}</p>
+          <p class="text-red-600 text-lg mb-4">{{ error() }}</p>
           <button
             (click)="loadDashboardData()"
             class="px-8 py-3 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
@@ -53,7 +53,7 @@ import { switchMap } from 'rxjs/operators';
       }
 
       <!-- Dashboard Content -->
-      @if (!loading && !error) {
+      @if (!loading() && !error()) {
         <div>
           <!-- Statistics Cards -->
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -63,7 +63,7 @@ import { switchMap } from 'rxjs/operators';
                 <h3 class="text-xs font-medium text-gray-600 uppercase tracking-wide mb-2">
                   Total Jobs
                 </h3>
-                <p class="text-3xl font-bold text-gray-900">{{ stats.totalJobs }}</p>
+                <p class="text-3xl font-bold text-gray-900">{{ stats().totalJobs }}</p>
               </div>
             </div>
 
@@ -73,7 +73,7 @@ import { switchMap } from 'rxjs/operators';
                 <h3 class="text-xs font-medium text-gray-600 uppercase tracking-wide mb-2">
                   Successful
                 </h3>
-                <p class="text-3xl font-bold text-gray-900">{{ stats.successfulJobs }}</p>
+                <p class="text-3xl font-bold text-gray-900">{{ stats().successfulJobs }}</p>
               </div>
             </div>
 
@@ -83,7 +83,7 @@ import { switchMap } from 'rxjs/operators';
                 <h3 class="text-xs font-medium text-gray-600 uppercase tracking-wide mb-2">
                   Failed
                 </h3>
-                <p class="text-3xl font-bold text-gray-900">{{ stats.failedJobs }}</p>
+                <p class="text-3xl font-bold text-gray-900">{{ stats().failedJobs }}</p>
               </div>
             </div>
 
@@ -93,7 +93,7 @@ import { switchMap } from 'rxjs/operators';
                 <h3 class="text-xs font-medium text-gray-600 uppercase tracking-wide mb-2">
                   Avg Duration
                 </h3>
-                <p class="text-3xl font-bold text-gray-900">{{ formatDuration(stats.avgDuration) }}</p>
+                <p class="text-3xl font-bold text-gray-900">{{ formatDuration(stats().avgDuration) }}</p>
               </div>
             </div>
           </div>
@@ -133,7 +133,7 @@ import { switchMap } from 'rxjs/operators';
                   </tr>
                 </thead>
                 <tbody>
-                  @for (job of recentJobs; track job.app_id) {
+                  @for (job of recentJobs(); track job.app_id) {
                     <tr class="hover:bg-gray-50 transition-colors">
                       <td class="px-4 py-4 border-b border-gray-200 font-mono text-xs text-gray-700">
                         {{ job.app_id }}
@@ -166,7 +166,7 @@ import { switchMap } from 'rxjs/operators';
                 </tbody>
               </table>
 
-              @if (recentJobs.length === 0) {
+              @if (recentJobs().length === 0) {
                 <div class="text-center py-12 text-gray-600">
                   <p>No jobs found. Start by collecting Spark job data.</p>
                 </div>
@@ -179,26 +179,31 @@ import { switchMap } from 'rxjs/operators';
   `
 })
 export class Dashboard implements OnInit, OnDestroy {
-  recentJobs: SparkJob[] = [];
-  totalJobs = 0;
-  loading = false;
-  error: string | null = null;
-
-  // Statistics
-  stats = {
-    totalJobs: 0,
-    successfulJobs: 0,
-    failedJobs: 0,
-    avgDuration: 0
-  };
-
-  // Real-time monitoring
-  autoRefreshEnabled = signal(true);
-  lastUpdated = signal<Date | null>(null);
+  private readonly apiService = inject(ApiService);
   private refreshSubscription?: Subscription;
   private readonly REFRESH_INTERVAL = 30000; // 30 seconds
 
-  constructor(private apiService: ApiService) {}
+  // Reactive state using signals
+  protected readonly recentJobs = signal<SparkJob[]>([]);
+  protected readonly totalJobs = signal(0);
+  protected readonly loading = signal(false);
+  protected readonly error = signal<string | null>(null);
+  protected readonly autoRefreshEnabled = signal(true);
+  protected readonly lastUpdated = signal<Date | null>(null);
+
+  // Computed statistics
+  protected readonly stats = computed(() => {
+    const jobs = this.recentJobs();
+    const total = this.totalJobs();
+    const successfulJobs = jobs.filter(j => j.status === 'completed').length;
+    const failedJobs = jobs.filter(j => j.status === 'failed').length;
+    const durations = jobs.filter(j => j.duration_ms > 0).map(j => j.duration_ms);
+    const avgDuration = durations.length > 0
+      ? durations.reduce((a, b) => a + b, 0) / durations.length
+      : 0;
+
+    return { totalJobs: total, successfulJobs, failedJobs, avgDuration };
+  });
 
   ngOnInit(): void {
     this.loadDashboardData();
@@ -210,21 +215,19 @@ export class Dashboard implements OnInit, OnDestroy {
   }
 
   loadDashboardData(): void {
-    this.loading = true;
-    this.error = null;
+    this.loading.set(true);
+    this.error.set(null);
 
     this.apiService.getJobs({ limit: 10 }).subscribe({
       next: (response) => {
-        this.recentJobs = response.jobs;
-        this.totalJobs = response.total;
-        this.calculateStats();
+        this.recentJobs.set(response.jobs);
+        this.totalJobs.set(response.total);
         this.lastUpdated.set(new Date());
-        this.loading = false;
+        this.loading.set(false);
       },
-      error: (err) => {
-        this.error = 'Failed to load dashboard data';
-        console.error('Error loading dashboard:', err);
-        this.loading = false;
+      error: () => {
+        this.error.set('Failed to load dashboard data');
+        this.loading.set(false);
       }
     });
   }
@@ -250,14 +253,13 @@ export class Dashboard implements OnInit, OnDestroy {
       .subscribe({
         next: (response) => {
           if (this.autoRefreshEnabled()) {
-            this.recentJobs = response.jobs;
-            this.totalJobs = response.total;
-            this.calculateStats();
+            this.recentJobs.set(response.jobs);
+            this.totalJobs.set(response.total);
             this.lastUpdated.set(new Date());
           }
         },
-        error: (err) => {
-          console.error('Auto-refresh error:', err);
+        error: () => {
+          // Silently handle auto-refresh errors
         }
       });
   }
@@ -267,20 +269,6 @@ export class Dashboard implements OnInit, OnDestroy {
       this.refreshSubscription.unsubscribe();
       this.refreshSubscription = undefined;
     }
-  }
-
-  calculateStats(): void {
-    this.stats.totalJobs = this.totalJobs;
-    this.stats.successfulJobs = this.recentJobs.filter(j => j.status === 'completed').length;
-    this.stats.failedJobs = this.recentJobs.filter(j => j.status === 'failed').length;
-
-    const durations = this.recentJobs
-      .filter(j => j.duration_ms > 0)
-      .map(j => j.duration_ms);
-
-    this.stats.avgDuration = durations.length > 0
-      ? durations.reduce((a, b) => a + b, 0) / durations.length
-      : 0;
   }
 
   getStatusClass(status: string | undefined): string {
