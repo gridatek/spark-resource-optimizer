@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "spark-resource-optimizer.configMapName" . }}
+  labels:
+    {{- include "spark-resource-optimizer.labels" . | nindent 4 }}
+data:
+  SPARK_OPTIMIZER_LOG_LEVEL: {{ .Values.config.logLevel | quote }}
+  SPARK_OPTIMIZER_API_HOST: {{ .Values.config.api.host | quote }}
+  SPARK_OPTIMIZER_API_PORT: {{ .Values.config.api.port | quote }}
+  SPARK_OPTIMIZER_DEBUG: {{ .Values.config.api.debug | quote }}
+  SPARK_OPTIMIZER_ENABLE_MONITORING: {{ .Values.config.features.monitoring | quote }}
+  SPARK_OPTIMIZER_ENABLE_TUNING: {{ .Values.config.features.tuning | quote }}
+  SPARK_OPTIMIZER_ENABLE_COST_MODELING: {{ .Values.config.features.costModeling | quote }}
+  SPARK_OPTIMIZER_ENABLE_AUTH: {{ .Values.config.features.auth | quote }}
+  SPARK_OPTIMIZER_WEBSOCKET_PORT: {{ .Values.config.websocketPort | quote }}
+  {{- if .Values.config.historyServerUrl }}
+  SPARK_OPTIMIZER_HISTORY_SERVER_URL: {{ .Values.config.historyServerUrl | quote }}
+  {{- end }}
+  {{- if .Values.config.metricsEndpoint }}
+  SPARK_OPTIMIZER_METRICS_ENDPOINT: {{ .Values.config.metricsEndpoint | quote }}
+  {{- end }}
+  # Token expiration settings
+  ACCESS_TOKEN_EXPIRE_MINUTES: {{ .Values.auth.jwt.accessTokenExpireMinutes | quote }}
+  REFRESH_TOKEN_EXPIRE_DAYS: {{ .Values.auth.jwt.refreshTokenExpireDays | quote }}

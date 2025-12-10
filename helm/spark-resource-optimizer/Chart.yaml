@@ -1,0 +1,32 @@
+apiVersion: v2
+name: spark-resource-optimizer
+description: A Helm chart for deploying Spark Resource Optimizer - an intelligent tool for optimizing Apache Spark job resources
+
+type: application
+version: 0.1.0
+appVersion: "0.2.0"
+
+keywords:
+  - spark
+  - optimization
+  - resource-management
+  - machine-learning
+  - cost-optimization
+
+home: https://github.com/gridatek/spark-resource-optimizer
+sources:
+  - https://github.com/gridatek/spark-resource-optimizer
+
+maintainers:
+  - name: Gridatek
+    url: https://github.com/gridatek
+
+dependencies:
+  - name: postgresql
+    version: "13.x.x"
+    repository: https://charts.bitnami.com/bitnami
+    condition: postgresql.enabled
+  - name: redis
+    version: "18.x.x"
+    repository: https://charts.bitnami.com/bitnami
+    condition: redis.enabled

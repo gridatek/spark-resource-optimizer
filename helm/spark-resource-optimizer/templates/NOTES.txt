@@ -1,0 +1,64 @@
+🚀 Spark Resource Optimizer has been deployed!
+
+1. Get the application URL by running these commands:
+{{- if .Values.ingress.enabled }}
+{{- range $host := .Values.ingress.hosts }}
+  {{- range .paths }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ $host.host }}{{ .path }}
+  {{- end }}
+{{- end }}
+{{- else if contains "NodePort" .Values.service.type }}
+  export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "spark-resource-optimizer.fullname" . }})
+  export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
+  echo http://$NODE_IP:$NODE_PORT
+{{- else if contains "LoadBalancer" .Values.service.type }}
+     NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+           You can watch the status of by running 'kubectl get --namespace {{ .Release.Namespace }} svc -w {{ include "spark-resource-optimizer.fullname" . }}'
+  export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ include "spark-resource-optimizer.fullname" . }} --template "{{"{{ range (index .status.loadBalancer.ingress 0) }}{{.}}{{ end }}"}}")
+  echo http://$SERVICE_IP:{{ .Values.service.port }}
+{{- else if contains "ClusterIP" .Values.service.type }}
+  export POD_NAME=$(kubectl get pods --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/name={{ include "spark-resource-optimizer.name" . }},app.kubernetes.io/instance={{ .Release.Name }}" -o jsonpath="{.items[0].metadata.name}")
+  export CONTAINER_PORT=$(kubectl get pod --namespace {{ .Release.Namespace }} $POD_NAME -o jsonpath="{.spec.containers[0].ports[0].containerPort}")
+  echo "Visit http://127.0.0.1:8080 to use your application"
+  kubectl --namespace {{ .Release.Namespace }} port-forward $POD_NAME 8080:$CONTAINER_PORT
+{{- end }}
+
+2. Check the API health:
+  curl http://<API_URL>/health
+
+{{- if .Values.config.features.auth }}
+
+3. Authentication is enabled. API endpoints are documented at:
+   - POST /api/v1/auth/register - Register a new user
+   - POST /api/v1/auth/login - Login and get tokens
+   - POST /api/v1/auth/refresh - Refresh access token
+   - GET /api/v1/auth/me - Get current user profile
+
+{{- if .Values.auth.initialAdmin.enabled }}
+   An initial admin user has been created. Get the credentials:
+   kubectl get secret {{ include "spark-resource-optimizer.jwtSecretName" . }} -n {{ .Release.Namespace }} -o jsonpath='{.data.INITIAL_ADMIN_PASSWORD}' | base64 -d
+{{- end }}
+{{- end }}
+
+4. API Documentation:
+   - GET /api/v1/openapi.yaml - OpenAPI specification
+   - POST /api/v1/recommend - Get resource recommendations
+   - GET /api/v1/jobs - List stored jobs
+   - GET /api/v1/stats - Get statistics
+
+{{- if .Values.config.features.monitoring }}
+
+5. Real-time Monitoring:
+   - WebSocket port: {{ .Values.config.websocketPort }}
+   - GET /api/v1/monitor/status - Monitoring status
+   - GET /api/v1/monitor/metrics - Current metrics
+{{- end }}
+
+{{- if .Values.config.features.costModeling }}
+
+6. Cost Modeling:
+   - POST /api/v1/cost/estimate - Estimate job costs
+   - POST /api/v1/cost/compare - Compare cloud providers
+{{- end }}
+
+For more information, visit: https://github.com/gridatek/spark-resource-optimizer
