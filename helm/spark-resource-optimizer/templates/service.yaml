@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "spark-resource-optimizer.fullname" . }}
+  labels:
+    {{- include "spark-resource-optimizer.labels" . | nindent 4 }}
+  {{- with .Values.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+    {{- if .Values.config.features.monitoring }}
+    - port: {{ .Values.config.websocketPort }}
+      targetPort: websocket
+      protocol: TCP
+      name: websocket
+    {{- end }}
+  selector:
+    {{- include "spark-resource-optimizer.selectorLabels" . | nindent 4 }}

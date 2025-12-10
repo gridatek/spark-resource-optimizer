@@ -25,6 +25,10 @@ from spark_optimizer.api.monitoring_routes import (
 from spark_optimizer.api.tuning_routes import tuning_bp, init_tuning
 from spark_optimizer.api.cost_routes import cost_bp, init_cost_modeling
 
+# Import authentication
+from spark_optimizer.auth.routes import auth_bp
+from spark_optimizer.auth.models import User, RefreshToken
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -45,6 +49,7 @@ def init_app(
     enable_monitoring: bool = True,
     enable_tuning: bool = True,
     enable_cost_modeling: bool = True,
+    enable_auth: bool = True,
     metrics_endpoint: Optional[str] = None,
     history_server_url: Optional[str] = None,
     websocket_port: int = 8765,
@@ -56,6 +61,7 @@ def init_app(
         enable_monitoring: Whether to enable real-time monitoring
         enable_tuning: Whether to enable auto-tuning
         enable_cost_modeling: Whether to enable cost modeling
+        enable_auth: Whether to enable authentication/authorization
         metrics_endpoint: Prometheus metrics endpoint for monitoring
         history_server_url: Spark History Server URL for monitoring
         websocket_port: WebSocket server port for real-time updates
@@ -66,11 +72,23 @@ def init_app(
     recommender = SimilarityRecommender(db=db)
     rule_based_recommender = RuleBasedRecommender()
 
+    # Store database URL in app config for use by auth module
+    app.config["DATABASE_URL"] = db_url
+
     # Register blueprints for new features
     app.register_blueprint(api_bp, url_prefix="/api")
     app.register_blueprint(monitoring_bp, url_prefix="/api/v1")
     app.register_blueprint(tuning_bp, url_prefix="/api/v1")
     app.register_blueprint(cost_bp, url_prefix="/api/v1")
+
+    # Register authentication blueprint
+    if enable_auth:
+        app.register_blueprint(auth_bp, url_prefix="/api/v1/auth")
+        # Create auth tables
+        from spark_optimizer.auth.models import User, RefreshToken
+        User.__table__.create(db.engine, checkfirst=True)
+        RefreshToken.__table__.create(db.engine, checkfirst=True)
+        logger.info("Authentication enabled")
 
     # Initialize monitoring if enabled
     if enable_monitoring:
@@ -817,6 +835,7 @@ def run_server(
     enable_monitoring: bool = True,
     enable_tuning: bool = True,
     enable_cost_modeling: bool = True,
+    enable_auth: bool = True,
     metrics_endpoint: Optional[str] = None,
     history_server_url: Optional[str] = None,
     websocket_port: int = 8765,
@@ -831,6 +850,7 @@ def run_server(
         enable_monitoring: Enable real-time monitoring
         enable_tuning: Enable auto-tuning capabilities
         enable_cost_modeling: Enable advanced cost modeling
+        enable_auth: Enable authentication/authorization
         metrics_endpoint: Prometheus metrics endpoint for monitoring
         history_server_url: Spark History Server URL for monitoring
         websocket_port: WebSocket server port for real-time updates
@@ -840,6 +860,7 @@ def run_server(
         enable_monitoring=enable_monitoring,
         enable_tuning=enable_tuning,
         enable_cost_modeling=enable_cost_modeling,
+        enable_auth=enable_auth,
         metrics_endpoint=metrics_endpoint,
         history_server_url=history_server_url,
         websocket_port=websocket_port,
@@ -852,6 +873,7 @@ def run_server(
 
     logger.info(f"Starting Spark Resource Optimizer API on {host}:{port}")
     logger.info("Available features:")
+    logger.info(f"  - Authentication: {'enabled' if enable_auth else 'disabled'}")
     logger.info(f"  - Real-time monitoring: {'enabled' if enable_monitoring else 'disabled'}")
     logger.info(f"  - Auto-tuning: {'enabled' if enable_tuning else 'disabled'}")
     logger.info(f"  - Cost modeling: {'enabled' if enable_cost_modeling else 'disabled'}")

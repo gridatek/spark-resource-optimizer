@@ -1,0 +1,244 @@
+# Default values for spark-resource-optimizer
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Number of replicas for the API server
+replicaCount: 2
+
+image:
+  repository: gridatek/spark-resource-optimizer
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion
+  tag: ""
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext:
+  fsGroup: 1000
+  runAsNonRoot: true
+  runAsUser: 1000
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1000
+
+service:
+  type: ClusterIP
+  port: 8080
+  annotations: {}
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+    # cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+    - host: spark-optimizer.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+  #  - secretName: spark-optimizer-tls
+  #    hosts:
+  #      - spark-optimizer.local
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 250m
+    memory: 512Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# Application configuration
+config:
+  # Log level: DEBUG, INFO, WARNING, ERROR
+  logLevel: INFO
+
+  # API server settings
+  api:
+    host: "0.0.0.0"
+    port: 8080
+    debug: false
+
+  # Feature toggles
+  features:
+    monitoring: true
+    tuning: true
+    costModeling: true
+    auth: true
+
+  # WebSocket port for real-time monitoring
+  websocketPort: 8765
+
+  # Spark History Server URL (if using external history server)
+  historyServerUrl: ""
+
+  # Prometheus metrics endpoint (for monitoring)
+  metricsEndpoint: ""
+
+# Authentication settings
+auth:
+  # JWT configuration
+  jwt:
+    # Secret key for signing JWT tokens (auto-generated if empty)
+    secretKey: ""
+    # Access token expiration in minutes
+    accessTokenExpireMinutes: 30
+    # Refresh token expiration in days
+    refreshTokenExpireDays: 7
+
+  # Initial admin user (created on first startup)
+  initialAdmin:
+    enabled: true
+    username: admin
+    email: admin@example.com
+    # Password should be set via secret or overridden
+    password: ""
+
+# Database configuration
+database:
+  # Use external database (set to true if using your own PostgreSQL)
+  external: false
+
+  # Connection settings for external database
+  host: ""
+  port: 5432
+  name: spark_optimizer
+  username: spark_optimizer
+  password: ""
+
+  # SSL mode: disable, allow, prefer, require, verify-ca, verify-full
+  sslMode: prefer
+
+# PostgreSQL subchart configuration (only used if database.external is false)
+postgresql:
+  enabled: true
+  auth:
+    username: spark_optimizer
+    password: ""
+    database: spark_optimizer
+  primary:
+    persistence:
+      enabled: true
+      size: 10Gi
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 100m
+        memory: 256Mi
+
+# Redis subchart configuration (for future task queue support)
+redis:
+  enabled: false
+  auth:
+    enabled: true
+    password: ""
+  master:
+    persistence:
+      enabled: true
+      size: 1Gi
+
+# Worker configuration (for background jobs - future feature)
+worker:
+  enabled: false
+  replicaCount: 1
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+
+# Prometheus monitoring
+prometheus:
+  enabled: false
+  serviceMonitor:
+    enabled: false
+    interval: 30s
+    labels: {}
+
+# Health check configuration
+healthCheck:
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: http
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  readinessProbe:
+    httpGet:
+      path: /health
+      port: http
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+# Persistent volume for event logs (optional)
+persistence:
+  eventLogs:
+    enabled: false
+    storageClass: ""
+    accessMode: ReadWriteOnce
+    size: 10Gi
+    existingClaim: ""
+
+  data:
+    enabled: false
+    storageClass: ""
+    accessMode: ReadWriteOnce
+    size: 5Gi
+    existingClaim: ""
+
+# Network policies
+networkPolicy:
+  enabled: false
+  # Additional ingress rules
+  ingress: []
+  # Additional egress rules
+  egress: []
+
+# Pod Disruption Budget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+  # maxUnavailable: 1
