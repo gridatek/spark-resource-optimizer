@@ -145,6 +145,22 @@ jobs:
             exit 1
           fi
 
+      - name: Verify API endpoints
+        run: |
+          echo "Testing /api/v1/jobs endpoint..."
+          JOBS_RESPONSE=$(curl -s http://localhost:8080/api/v1/jobs)
+          echo "Response: $JOBS_RESPONSE"
+
+          JOBS_COUNT=$(echo $JOBS_RESPONSE | python3 -c "import sys, json; data=json.load(sys.stdin); print(data.get('total', 0))")
+          echo "Total jobs found: $JOBS_COUNT"
+
+          if [ "$JOBS_COUNT" -lt 20 ]; then
+            echo "ERROR: Expected at least 20 jobs, got $JOBS_COUNT"
+            exit 1
+          fi
+
+          echo "✓ API endpoints verified successfully"
+
       - name: Run E2E tests
         working-directory: web-ui-dashboard
         env:
