@@ -403,8 +403,8 @@ class TestSparkMonitor:
 class TestSparkMonitorPolling:
     """Test polling functionality with mocked HTTP."""
 
-    @patch("spark_optimizer.monitoring.monitor.requests")
-    def test_poll_prometheus_success(self, mock_requests):
+    @patch("requests.get")
+    def test_poll_prometheus_success(self, mock_get):
         """Test successful Prometheus polling."""
         monitor = SparkMonitor(metrics_endpoint="http://localhost:9090")
 
@@ -420,7 +420,7 @@ class TestSparkMonitorPolling:
                 ]
             }
         }
-        mock_requests.get.return_value = mock_response
+        mock_get.return_value = mock_response
 
         monitor._poll_prometheus()
 
@@ -429,14 +429,14 @@ class TestSparkMonitorPolling:
         assert apps[0].app_id == "app-123"
         assert apps[0].executors == 5
 
-    @patch("spark_optimizer.monitoring.monitor.requests")
-    def test_poll_prometheus_error(self, mock_requests):
+    @patch("requests.get")
+    def test_poll_prometheus_error(self, mock_get):
         """Test Prometheus polling handles errors gracefully."""
         monitor = SparkMonitor(metrics_endpoint="http://localhost:9090")
 
         mock_response = Mock()
         mock_response.status_code = 500
-        mock_requests.get.return_value = mock_response
+        mock_get.return_value = mock_response
 
         # Should not raise
         monitor._poll_prometheus()
@@ -444,8 +444,8 @@ class TestSparkMonitorPolling:
         # No apps should be added
         assert len(monitor.get_applications()) == 0
 
-    @patch("spark_optimizer.monitoring.monitor.requests")
-    def test_poll_history_server_success(self, mock_requests):
+    @patch("requests.get")
+    def test_poll_history_server_success(self, mock_get):
         """Test successful History Server polling."""
         monitor = SparkMonitor(history_server_url="http://localhost:18080")
 
@@ -459,7 +459,7 @@ class TestSparkMonitorPolling:
         detail_response.status_code = 200
         detail_response.json.return_value = {"attempts": [{"completed": False}]}
 
-        mock_requests.get.side_effect = [list_response, detail_response]
+        mock_get.side_effect = [list_response, detail_response]
 
         monitor._poll_history_server()
 
@@ -468,8 +468,8 @@ class TestSparkMonitorPolling:
         assert apps[0].app_id == "app-123"
         assert apps[0].status == "running"
 
-    @patch("spark_optimizer.monitoring.monitor.requests")
-    def test_poll_history_server_completed_app(self, mock_requests):
+    @patch("requests.get")
+    def test_poll_history_server_completed_app(self, mock_get):
         """Test History Server polling with completed app."""
         monitor = SparkMonitor(history_server_url="http://localhost:18080")
 
@@ -481,7 +481,7 @@ class TestSparkMonitorPolling:
         detail_response.status_code = 200
         detail_response.json.return_value = {"attempts": [{"completed": True}]}
 
-        mock_requests.get.side_effect = [list_response, detail_response]
+        mock_get.side_effect = [list_response, detail_response]
 
         monitor._poll_history_server()
 
