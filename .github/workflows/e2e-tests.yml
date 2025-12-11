@@ -123,6 +123,30 @@ jobs:
           print(f'Seeded {20} test jobs')
           "
 
+      - name: Verify database file
+        run: |
+          echo "Checking database file..."
+          ls -lh data/
+
+          echo "Verifying database contents..."
+          python -c "
+          from spark_optimizer.storage.database import Database
+          from spark_optimizer.storage.models import SparkApplication
+
+          db = Database('sqlite:///data/test_spark_optimizer.db')
+
+          with db.get_session() as session:
+              count = session.query(SparkApplication).count()
+              print(f'Database contains {count} jobs')
+
+              if count > 0:
+                  job = session.query(SparkApplication).first()
+                  print(f'First job: {job.app_id} - {job.app_name}')
+              else:
+                  print('ERROR: No jobs found in database!')
+                  exit(1)
+          "
+
       - name: Start backend server
         run: |
           export DATABASE_URL=sqlite:///data/test_spark_optimizer.db
