@@ -78,7 +78,7 @@ def init_app(
 
     # Register blueprints for new features (only once)
     if not _blueprints_registered:
-        app.register_blueprint(api_bp, url_prefix="/api")
+        app.register_blueprint(api_bp, url_prefix="/api/v1")
         app.register_blueprint(monitoring_bp, url_prefix="/api/v1")
         app.register_blueprint(tuning_bp, url_prefix="/api/v1")
         app.register_blueprint(cost_bp, url_prefix="/api/v1")
