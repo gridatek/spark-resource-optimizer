@@ -396,8 +396,15 @@ def list_jobs():
                         "metrics": {
                             "total_tasks": job.total_tasks,
                             "failed_tasks": job.failed_tasks,
+                            "total_stages": job.total_stages,
+                            "failed_stages": job.failed_stages,
                             "input_bytes": job.input_bytes,
                             "output_bytes": job.output_bytes,
+                            "shuffle_read_bytes": job.shuffle_read_bytes,
+                            "shuffle_write_bytes": job.shuffle_write_bytes,
+                            "cpu_time_ms": job.cpu_time_ms,
+                            "memory_spilled_bytes": job.memory_spilled_bytes,
+                            "disk_spilled_bytes": job.disk_spilled_bytes,
                         },
                     }
                 )
