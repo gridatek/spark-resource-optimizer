@@ -900,4 +900,6 @@ def run_server(
 
 
 if __name__ == "__main__":
-    run_server(debug=True)
+    # Read database URL from environment or use default
+    db_url = os.getenv("DATABASE_URL", "sqlite:///spark_optimizer.db")
+    run_server(db_url=db_url, debug=True)
