@@ -16,11 +16,11 @@ test.describe('Dashboard Page', () => {
     // Wait for loading to complete
     await waitForDashboardLoaded(page);
 
-    // Check for statistics cards
-    await expect(page.getByText('Total Jobs')).toBeVisible();
-    await expect(page.getByText('Successful')).toBeVisible();
-    await expect(page.getByText('Failed')).toBeVisible();
-    await expect(page.getByText('Avg Duration')).toBeVisible();
+    // Check for statistics cards headings (use role to avoid matching status badges)
+    await expect(page.getByRole('heading', { name: 'Total Jobs' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Successful' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Failed' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Avg Duration' })).toBeVisible();
   });
 
   test('should display auto-refresh toggle', async ({ page }) => {
