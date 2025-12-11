@@ -353,7 +353,10 @@ class TestFeedbackLoop:
                 metric_after=80.0,
             )
 
-        patterns = loop.get_patterns(min_samples=5)
+        # With 10 samples, confidence is 0.5 (success_rate * sample_factor)
+        # sample_factor = min(1.0, 10/20) = 0.5
+        # So we need to lower min_confidence to see the patterns
+        patterns = loop.get_patterns(min_samples=5, min_confidence=0.4)
 
         assert len(patterns) >= 1
         for pattern in patterns:
@@ -479,7 +482,7 @@ class TestFeedbackLoopConditionMatching:
 
     def test_condition_gt(self):
         """Test greater than condition matching."""
-        loop = FeedbackLoop()
+        loop = FeedbackLoop(min_confidence=0.4)  # Lower threshold for test patterns
 
         # Manually create a pattern with gt condition
         loop._patterns["test"] = LearningRecord(
@@ -496,7 +499,7 @@ class TestFeedbackLoopConditionMatching:
 
     def test_condition_lt(self):
         """Test less than condition matching."""
-        loop = FeedbackLoop()
+        loop = FeedbackLoop(min_confidence=0.4)  # Lower threshold for test patterns
 
         loop._patterns["test"] = LearningRecord(
             pattern_id="test",
@@ -516,7 +519,7 @@ class TestFeedbackLoopConditionMatching:
 
     def test_condition_gte(self):
         """Test greater than or equal condition matching."""
-        loop = FeedbackLoop()
+        loop = FeedbackLoop(min_confidence=0.4)  # Lower threshold for test patterns
 
         loop._patterns["test"] = LearningRecord(
             pattern_id="test",
@@ -536,7 +539,7 @@ class TestFeedbackLoopConditionMatching:
 
     def test_condition_multiple_metrics(self):
         """Test matching with multiple metric conditions."""
-        loop = FeedbackLoop()
+        loop = FeedbackLoop(min_confidence=0.4)  # Lower threshold for test patterns
 
         loop._patterns["test"] = LearningRecord(
             pattern_id="test",
