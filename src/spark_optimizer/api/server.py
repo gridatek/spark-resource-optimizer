@@ -42,6 +42,7 @@ CORS(app)  # Enable CORS for all routes
 db: Optional[Database] = None
 recommender: Optional[SimilarityRecommender] = None
 rule_based_recommender: Optional[RuleBasedRecommender] = None
+_blueprints_registered = False
 
 
 def init_app(
@@ -66,7 +67,7 @@ def init_app(
         history_server_url: Spark History Server URL for monitoring
         websocket_port: WebSocket server port for real-time updates
     """
-    global db, recommender, rule_based_recommender
+    global db, recommender, rule_based_recommender, _blueprints_registered
     db = Database(db_url)
     db.create_tables()
     recommender = SimilarityRecommender(db=db)
@@ -75,15 +76,21 @@ def init_app(
     # Store database URL in app config for use by auth module
     app.config["DATABASE_URL"] = db_url
 
-    # Register blueprints for new features
-    app.register_blueprint(api_bp, url_prefix="/api")
-    app.register_blueprint(monitoring_bp, url_prefix="/api/v1")
-    app.register_blueprint(tuning_bp, url_prefix="/api/v1")
-    app.register_blueprint(cost_bp, url_prefix="/api/v1")
+    # Register blueprints for new features (only once)
+    if not _blueprints_registered:
+        app.register_blueprint(api_bp, url_prefix="/api")
+        app.register_blueprint(monitoring_bp, url_prefix="/api/v1")
+        app.register_blueprint(tuning_bp, url_prefix="/api/v1")
+        app.register_blueprint(cost_bp, url_prefix="/api/v1")
 
-    # Register authentication blueprint
+        # Register authentication blueprint
+        if enable_auth:
+            app.register_blueprint(auth_bp, url_prefix="/api/v1/auth")
+
+        _blueprints_registered = True
+
+    # Create auth tables even if blueprints already registered
     if enable_auth:
-        app.register_blueprint(auth_bp, url_prefix="/api/v1/auth")
         # Create auth tables
         from spark_optimizer.auth.models import User, RefreshToken
 

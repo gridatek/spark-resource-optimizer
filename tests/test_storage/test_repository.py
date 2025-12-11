@@ -68,9 +68,8 @@ def sample_stage_data():
     """Sample stage data for testing."""
     return {
         "stage_id": 1,
-        "name": "map at TestJob.scala:42",
+        "stage_name": "map at TestJob.scala:42",
         "num_tasks": 100,
-        "status": "COMPLETE",
         "duration_ms": 30000,
         "input_bytes": 1024**3,
         "output_bytes": 512 * 1024**2,
@@ -346,9 +345,7 @@ class TestJobRecommendationRepository:
         """Sample recommendation data for testing."""
         return {
             "job_signature": "sig-test-001",
-            "input_size_bytes": 10 * 1024**3,
-            "job_type": "etl",
-            "recommended_executors": 10,
+            "recommended_num_executors": 10,
             "recommended_executor_cores": 4,
             "recommended_executor_memory_mb": 8192,
             "recommended_driver_memory_mb": 4096,
@@ -364,7 +361,7 @@ class TestJobRecommendationRepository:
 
         assert rec.id is not None
         assert rec.job_signature == "sig-test-001"
-        assert rec.recommended_executors == 10
+        assert rec.recommended_num_executors == 10
         assert rec.confidence_score == 0.85
 
     def test_get_by_signature(self, session, sample_recommendation_data):
@@ -390,7 +387,7 @@ class TestJobRecommendationRepository:
         # Create multiple recommendations with same signature
         for i in range(3):
             data = sample_recommendation_data.copy()
-            data["recommended_executors"] = 10 + i
+            data["recommended_num_executors"] = 10 + i
             repo.create(data)
             session.commit()
 
@@ -398,7 +395,7 @@ class TestJobRecommendationRepository:
         rec = repo.get_by_signature("sig-test-001")
 
         assert rec is not None
-        assert rec.recommended_executors == 12  # Last one created
+        assert rec.recommended_num_executors == 12  # Last one created
 
     def test_get_by_id(self, session, sample_recommendation_data):
         """Test retrieving recommendation by ID."""
@@ -601,12 +598,12 @@ class TestRepositoryEdgeCases:
         """Test creating application with minimal required data."""
         repo = SparkApplicationRepository(session)
 
-        minimal_data = {"app_id": "app-minimal"}
+        minimal_data = {"app_id": "app-minimal", "app_name": "Minimal App"}
         app = repo.create(minimal_data)
 
         assert app.id is not None
         assert app.app_id == "app-minimal"
-        assert app.app_name is None
+        assert app.app_name == "Minimal App"
 
     def test_search_with_empty_criteria(self, session, sample_app_data):
         """Test search with empty criteria returns all apps."""
