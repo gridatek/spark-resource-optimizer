@@ -2,6 +2,7 @@
 
 import pytest
 import json
+from datetime import datetime
 from unittest.mock import Mock, patch, MagicMock
 from flask import Flask
 
@@ -47,41 +48,40 @@ def mock_recommender():
 @pytest.fixture
 def sample_spark_application():
     """Create a sample SparkApplication for testing."""
-    app = MagicMock(spec=SparkApplication)
-    app.app_id = "app-test-123"
-    app.app_name = "Test Spark Job"
-    app.user = "test_user"
-    app.status = "COMPLETED"
-    app.spark_version = "3.4.0"
-    app.submit_time = None
-    app.start_time = MagicMock()
-    app.start_time.isoformat.return_value = "2024-01-01T10:00:00"
-    app.end_time = MagicMock()
-    app.end_time.isoformat.return_value = "2024-01-01T10:30:00"
-    app.duration_ms = 1800000
-    app.num_executors = 10
-    app.executor_cores = 4
-    app.executor_memory_mb = 8192
-    app.driver_memory_mb = 4096
-    app.total_tasks = 1000
-    app.failed_tasks = 0
-    app.total_stages = 10
-    app.failed_stages = 0
-    app.input_bytes = 10 * 1024**3
-    app.output_bytes = 5 * 1024**3
-    app.shuffle_read_bytes = 2 * 1024**3
-    app.shuffle_write_bytes = 2 * 1024**3
-    app.memory_spilled_bytes = 0
-    app.disk_spilled_bytes = 0
-    app.executor_run_time_ms = 1500000
-    app.executor_cpu_time_ms = 1400000
-    app.jvm_gc_time_ms = 50000
-    app.peak_memory_usage = 6 * 1024**3
-    app.cluster_type = "standalone"
-    app.instance_type = "m5.xlarge"
-    app.estimated_cost = 5.50
-    app.tags = {"job_type": "etl"}
-    app.spark_configs = {"spark.sql.shuffle.partitions": "200"}
+    app = SparkApplication(
+        app_id="app-test-123",
+        app_name="Test Spark Job",
+        user="test_user",
+        status="COMPLETED",
+        spark_version="3.4.0",
+        submit_time=None,
+        start_time=datetime(2024, 1, 1, 10, 0, 0),
+        end_time=datetime(2024, 1, 1, 10, 30, 0),
+        duration_ms=1800000,
+        num_executors=10,
+        executor_cores=4,
+        executor_memory_mb=8192,
+        driver_memory_mb=4096,
+        total_tasks=1000,
+        failed_tasks=0,
+        total_stages=10,
+        failed_stages=0,
+        input_bytes=10 * 1024**3,
+        output_bytes=5 * 1024**3,
+        shuffle_read_bytes=2 * 1024**3,
+        shuffle_write_bytes=2 * 1024**3,
+        memory_spilled_bytes=0,
+        disk_spilled_bytes=0,
+        executor_run_time_ms=1500000,
+        executor_cpu_time_ms=1400000,
+        jvm_gc_time_ms=50000,
+        peak_memory_usage=6 * 1024**3,
+        cluster_type="standalone",
+        instance_type="m5.xlarge",
+        estimated_cost=5.50,
+        tags={"job_type": "etl"},
+        spark_configs={"spark.sql.shuffle.partitions": "200"}
+    )
     return app
 
 
