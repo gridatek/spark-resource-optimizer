@@ -65,8 +65,16 @@ class TestHistoryServerCollector:
         """Test fetching applications list."""
         mock_response = Mock()
         mock_response.json.return_value = [
-            {"id": "app-1", "name": "Test App 1"},
-            {"id": "app-2", "name": "Test App 2"},
+            {
+                "id": "app-1",
+                "name": "Test App 1",
+                "attempts": [{"endTime": "2024-01-01T00:00:00GMT"}],
+            },
+            {
+                "id": "app-2",
+                "name": "Test App 2",
+                "attempts": [{"endTime": "2024-01-01T00:00:00GMT"}],
+            },
         ]
         mock_response.raise_for_status = Mock()
         mock_get.return_value = mock_response
@@ -80,27 +88,38 @@ class TestHistoryServerCollector:
 
         mock_get.assert_called_once_with(
             "http://localhost:18080/api/v1/applications",
-            params={"limit": 100, "status": "completed"},
+            params={"limit": 100},
             timeout=30,
         )
 
     @patch("requests.get")
     def test_fetch_applications_with_filters(self, mock_get):
-        """Test fetching applications with filters."""
+        """Test fetching applications with filters (client-side filtering)."""
         mock_response = Mock()
-        mock_response.json.return_value = []
+        mock_response.json.return_value = [
+            {
+                "id": "app-1",
+                "name": "Running App",
+                "attempts": [{"startTime": "2024-01-01T00:00:00GMT"}],
+            }
+        ]
         mock_response.raise_for_status = Mock()
         mock_get.return_value = mock_response
 
         config = {"max_apps": 50, "status": "running", "min_date": "2024-01-01"}
         collector = HistoryServerCollector("http://localhost:18080", config)
-        collector._fetch_applications()
+        apps = collector._fetch_applications()
 
+        # Status is filtered client-side, only limit and minDate passed to API
         mock_get.assert_called_once_with(
             "http://localhost:18080/api/v1/applications",
-            params={"limit": 50, "status": "running", "minDate": "2024-01-01"},
+            params={"limit": 50, "minDate": "2024-01-01"},
             timeout=30,
         )
+
+        # Should return the running app (no endTime)
+        assert len(apps) == 1
+        assert apps[0]["id"] == "app-1"
 
     @patch("requests.get")
     def test_fetch_application_details(self, mock_get):
@@ -235,8 +254,8 @@ class TestHistoryServerCollector:
                 {
                     "attemptId": "1",
                     "sparkUser": "test_user",
-                    "startTime": 1704067200000,  # 2024-01-01 00:00:00
-                    "endTime": 1704070800000,  # 2024-01-01 01:00:00
+                    "startTimeEpoch": 1704067200000,  # 2024-01-01 00:00:00
+                    "endTimeEpoch": 1704070800000,  # 2024-01-01 01:00:00
                     "duration": 3600000,  # 1 hour
                 }
             ],
@@ -347,8 +366,8 @@ class TestHistoryServerCollector:
                             {
                                 "attemptId": "1",
                                 "sparkUser": "test",
-                                "startTime": 1704067200000,
-                                "endTime": 1704070800000,
+                                "startTimeEpoch": 1704067200000,
+                                "endTimeEpoch": 1704070800000,
                                 "duration": 3600000,
                             }
                         ],
@@ -396,12 +415,24 @@ class TestHistoryServerCollector:
             if "/applications" in url and "app-" not in url:
                 # Return two apps
                 response.json.return_value = [
-                    {"id": "app-1", "name": "Good App", "attempts": []},
-                    {"id": "app-2", "name": "Bad App", "attempts": []},
+                    {
+                        "id": "app-1",
+                        "name": "Good App",
+                        "attempts": [{"endTime": "2024-01-01T00:00:00GMT"}],
+                    },
+                    {
+                        "id": "app-2",
+                        "name": "Bad App",
+                        "attempts": [{"endTime": "2024-01-01T00:00:00GMT"}],
+                    },
                 ]
             elif "app-2" in url:
                 # Fail for app-2
                 raise Exception("API error")
+            elif "/environment" in url:
+                response.json.return_value = {"sparkProperties": []}
+            elif "/allexecutors" in url:
+                response.json.return_value = []
             else:
                 response.json.return_value = {}
 
@@ -414,6 +445,6 @@ class TestHistoryServerCollector:
         # Should not raise exception, just skip bad apps
         job_data = collector.collect()
 
-        # Only app-1 should be processed
+        # App-1 should succeed with minimal data, app-2 should be skipped due to error
         assert len(job_data) == 1
         assert job_data[0]["app_id"] == "app-1"

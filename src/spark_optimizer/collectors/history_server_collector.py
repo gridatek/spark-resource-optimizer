@@ -1,8 +1,12 @@
 """Collector for Spark History Server API."""
 
 from typing import Dict, List, Optional
+from datetime import datetime
 import requests
+import logging
 from .base_collector import BaseCollector
+
+logger = logging.getLogger(__name__)
 
 
 class HistoryServerCollector(BaseCollector):
@@ -44,14 +48,23 @@ class HistoryServerCollector(BaseCollector):
         Raises:
             requests.RequestException: If API requests fail
         """
+        logger.info(f"Collecting applications from {self.history_server_url}")
         applications = self._fetch_applications()
+        logger.info(f"Found {len(applications)} applications")
 
         job_data = []
         for app in applications:
             try:
                 app_id = app["id"]
+                app_name = app.get("name", "Unknown")
                 attempts = app.get("attempts", [])
+
+                if not attempts:
+                    logger.warning(f"No attempts found for {app_id}, skipping")
+                    continue
+
                 attempt_id = attempts[-1].get("attemptId") if attempts else None
+                logger.debug(f"Processing {app_name} ({app_id})")
 
                 # Fetch detailed application data
                 app_details = self._fetch_application_details(app_id, attempt_id)
@@ -64,11 +77,15 @@ class HistoryServerCollector(BaseCollector):
                 )
                 if metrics:
                     job_data.append(metrics)
+                    logger.info(f"Collected metrics for {app_name}")
+                else:
+                    logger.warning(f"Failed to convert metrics for {app_name}")
 
             except Exception as e:
-                print(f"Error fetching details for {app_id}: {e}")
+                logger.error(f"Error fetching details for {app_id}: {e}", exc_info=True)
                 continue
 
+        logger.info(f"Successfully collected {len(job_data)} jobs")
         return job_data
 
     def validate_config(self) -> bool:
@@ -98,12 +115,12 @@ class HistoryServerCollector(BaseCollector):
         """
         params = {"limit": self.max_apps}
 
-        if self.status:
-            params["status"] = self.status
-
+        # Note: The Spark History Server API's 'status' parameter may not work as expected
+        # in all versions. We fetch all applications and filter afterward if needed.
         if self.min_date:
             params["minDate"] = self.min_date
 
+        logger.debug(f"Fetching applications with params: {params}")
         response = requests.get(
             f"{self.history_server_url}/api/v1/applications",
             params=params,
@@ -111,7 +128,30 @@ class HistoryServerCollector(BaseCollector):
         )
         response.raise_for_status()
 
-        return response.json()
+        applications = response.json()
+
+        # Filter by status if specified (doing it client-side for compatibility)
+        if self.status and self.status != "all":
+            filtered = []
+            for app in applications:
+                attempts = app.get("attempts", [])
+                if attempts:
+                    latest_attempt = attempts[-1]
+                    # Check if attempt is completed
+                    if self.status == "completed" and "endTime" in latest_attempt:
+                        filtered.append(app)
+                    elif self.status == "running" and "endTime" not in latest_attempt:
+                        filtered.append(app)
+                    else:
+                        filtered.append(
+                            app
+                        )  # Include if status doesn't match known types
+            logger.debug(
+                f"Filtered {len(filtered)}/{len(applications)} applications by status={self.status}"
+            )
+            return filtered
+
+        return applications
 
     def _fetch_application_details(
         self, app_id: str, attempt_id: Optional[str] = None
@@ -230,11 +270,36 @@ class HistoryServerCollector(BaseCollector):
             if attempts:
                 latest_attempt = attempts[-1]
 
-                if "startTime" in latest_attempt:
-                    start_time = self._parse_timestamp(latest_attempt["startTime"])
+                # Use epoch timestamps (in milliseconds) instead of ISO strings
+                if "startTimeEpoch" in latest_attempt:
+                    start_time = self._parse_timestamp(latest_attempt["startTimeEpoch"])
+                elif "startTime" in latest_attempt:
+                    # Fallback to parsing ISO string if epoch not available
+                    try:
+                        from datetime import datetime
 
-                if "endTime" in latest_attempt:
-                    end_time = self._parse_timestamp(latest_attempt["endTime"])
+                        start_time = datetime.fromisoformat(
+                            latest_attempt["startTime"].replace("GMT", "+00:00")
+                        )
+                    except Exception:
+                        logger.warning(
+                            f"Failed to parse startTime: {latest_attempt['startTime']}"
+                        )
+
+                if "endTimeEpoch" in latest_attempt:
+                    end_time = self._parse_timestamp(latest_attempt["endTimeEpoch"])
+                elif "endTime" in latest_attempt:
+                    # Fallback to parsing ISO string if epoch not available
+                    try:
+                        from datetime import datetime
+
+                        end_time = datetime.fromisoformat(
+                            latest_attempt["endTime"].replace("GMT", "+00:00")
+                        )
+                    except Exception:
+                        logger.warning(
+                            f"Failed to parse endTime: {latest_attempt['endTime']}"
+                        )
 
                 if "duration" in latest_attempt:
                     duration_ms = latest_attempt["duration"]
@@ -289,8 +354,12 @@ class HistoryServerCollector(BaseCollector):
                 "executor_run_time_ms": total_executor_run_time,
             }
 
+        except KeyError as e:
+            logger.error(f"Missing required field in metrics conversion: {e}")
+            logger.debug(f"App data: {app}")
+            return None
         except Exception as e:
-            print(f"Error converting metrics: {e}")
+            logger.error(f"Error converting metrics: {e}", exc_info=True)
             return None
 
     def _parse_memory_to_mb(self, memory_str: str) -> int:
@@ -302,7 +371,10 @@ class HistoryServerCollector(BaseCollector):
         Returns:
             Memory in megabytes
         """
-        memory_str = memory_str.lower().strip()
+        if not memory_str:
+            return 1024  # Default to 1GB if not specified
+
+        memory_str = str(memory_str).lower().strip()
 
         units = {
             "k": 1 / 1024,  # KB to MB

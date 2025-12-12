@@ -57,6 +57,72 @@ docker exec spark-master /opt/spark/bin/spark-submit \
   /opt/spark-jobs/inefficient_job.py
 ```
 
+### 4. memory_intensive_job.py
+A job that creates and caches large datasets to test memory optimization recommendations.
+
+**Configuration:**
+- Executor Memory: 1GB (moderate, may need increase)
+- Executor Cores: 2
+- Shuffle Partitions: 8
+- Purpose: Tests memory usage optimization
+
+**Operations:**
+- Generates 10M rows with 20 columns of random data
+- Caches large dataframes in memory
+- Performs multiple aggregations on cached data
+- Executes memory-intensive join operations
+
+**Usage:**
+```bash
+docker exec spark-master /opt/spark/bin/spark-submit \
+  --master spark://spark-master:7077 \
+  /opt/spark-jobs/memory_intensive_job.py
+```
+
+### 5. cpu_intensive_job.py
+A job that performs complex CPU-intensive computations to test core allocation recommendations.
+
+**Configuration:**
+- Executor Memory: 2GB
+- Executor Cores: 1 (limited to show CPU bottleneck)
+- Shuffle Partitions: 16
+- Purpose: Tests CPU/core optimization
+
+**Operations:**
+- Mathematical computations (sqrt, log, sin, cos)
+- Complex string manipulations
+- UDF-based transformations
+- Processes 1M rows with intensive calculations
+
+**Usage:**
+```bash
+docker exec spark-master /opt/spark/bin/spark-submit \
+  --master spark://spark-master:7077 \
+  /opt/spark-jobs/cpu_intensive_job.py
+```
+
+### 6. skewed_data_job.py
+A job with intentionally skewed data distribution to test skew detection and optimization.
+
+**Configuration:**
+- Executor Memory: 2GB
+- Executor Cores: 2
+- Shuffle Partitions: 8
+- Purpose: Tests data skew detection
+
+**Skew Characteristics:**
+- 80% of records have the same key (key "A")
+- Remaining 20% distributed across other keys
+- Uneven partition sizes during aggregation
+- Skewed join operations
+
+**Usage:**
+```bash
+docker exec spark-master /opt/spark/bin/spark-submit \
+  --master spark://spark-master:7077 \
+  /opt/spark-jobs/skewed_data_job.py
+```
+
 ## Integration Testing
 
 These jobs are used by the Docker integration test script to validate the Spark Resource Optimizer's ability to:
