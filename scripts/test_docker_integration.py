@@ -229,7 +229,7 @@ class DockerIntegrationTest:
                     "executor_cores": 2,
                     "executor_memory_mb": 4096,
                     "num_executors": 5,
-                    "input_data_size_gb": 10
+                    "input_size_bytes": 10 * 1024 * 1024 * 1024  # 10 GB in bytes
                 },
                 timeout=30
             )
@@ -277,11 +277,14 @@ class DockerIntegrationTest:
 
     def cleanup_event_logs(self):
         """Clean up event logs directory."""
+        import os
         spark_events_dir = self.project_root / "spark-events"
         if spark_events_dir.exists():
             import shutil
             shutil.rmtree(spark_events_dir)
             spark_events_dir.mkdir(parents=True, exist_ok=True)
+            # Set permissions so Docker containers can write to it
+            os.chmod(spark_events_dir, 0o777)
             self.log_info("Cleaned up event logs directory")
 
     def run_tests(self):
@@ -314,11 +317,24 @@ class DockerIntegrationTest:
             self.log("Submitting Spark Jobs", Colors.BOLD)
             self.log(f"{'='*60}\n", Colors.BOLD)
 
+            # Basic test jobs (always run)
             jobs = [
                 ("simple_wordcount.py", "Simple WordCount"),
                 ("data_processing_etl.py", "ETL Data Processing"),
                 ("inefficient_job.py", "Inefficient Job"),
             ]
+
+            # Extended test jobs (optional, run if available)
+            extended_jobs = [
+                ("memory_intensive_job.py", "Memory-Intensive Job"),
+                ("cpu_intensive_job.py", "CPU-Intensive Job"),
+                ("skewed_data_job.py", "Skewed Data Job"),
+            ]
+
+            # Check if running extended tests
+            run_extended = len(self.profiles) > 1 or "--extended" in str(self.profiles)
+            if run_extended:
+                jobs.extend(extended_jobs)
 
             job_results = []
             for job_script, job_name in jobs:

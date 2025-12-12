@@ -1,0 +1,205 @@
+name: Docker Integration Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'docker-compose.yml'
+      - 'scripts/test_docker_integration.py'
+      - 'spark-jobs/**'
+      - 'src/**'
+      - '.github/workflows/docker-integration-test.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'docker-compose.yml'
+      - 'scripts/test_docker_integration.py'
+      - 'spark-jobs/**'
+      - 'src/**'
+      - '.github/workflows/docker-integration-test.yml'
+  schedule:
+    # Run integration tests nightly at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      run_extended_tests:
+        description: 'Run extended test scenarios'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  docker-integration-test:
+    name: Run Docker Integration Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install requests
+
+    - name: Create required directories
+      run: |
+        mkdir -p spark-events
+        chmod 777 spark-events
+
+    - name: Pull Apache Spark image
+      run: |
+        docker pull apache/spark:3.5.0
+
+    - name: Make scripts executable
+      run: |
+        chmod +x scripts/test_docker_integration.py
+        chmod +x spark-jobs/*.py
+
+    - name: Run basic integration tests
+      run: |
+        python scripts/test_docker_integration.py --verbose
+      env:
+        PYTHONUNBUFFERED: 1
+
+    - name: Check Spark event logs
+      if: always()
+      run: |
+        echo "=== Spark Event Logs ==="
+        ls -lh spark-events/ || echo "No event logs found"
+        echo "=== Event log count ==="
+        ls spark-events/ | wc -l || echo "0"
+
+    - name: Check Spark History Server
+      if: always()
+      run: |
+        echo "=== History Server Applications ==="
+        curl -s http://localhost:18080/api/v1/applications | jq '. | length' || echo "History Server not accessible"
+
+    - name: View service logs on failure
+      if: failure()
+      run: |
+        echo "=== Docker Compose Status ==="
+        docker compose --profile with-spark ps
+        echo ""
+        echo "=== Spark Master Logs ==="
+        docker logs spark-master --tail=100
+        echo ""
+        echo "=== Spark Worker Logs ==="
+        docker logs spark-worker --tail=100
+        echo ""
+        echo "=== Spark History Server Logs ==="
+        docker logs spark-history-server --tail=100
+        echo ""
+        echo "=== API Logs ==="
+        docker logs spark-optimizer-api --tail=100
+
+    - name: Stop services
+      if: always()
+      run: |
+        docker compose --profile with-spark down -v
+
+    - name: Upload event logs as artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: spark-event-logs
+        path: spark-events/
+        retention-days: 7
+
+  docker-integration-test-extended:
+    name: Run Extended Integration Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    if: github.event.inputs.run_extended_tests == 'true' || github.event_name == 'schedule'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install requests
+
+    - name: Create required directories
+      run: |
+        mkdir -p spark-events
+        chmod 777 spark-events
+
+    - name: Pull Apache Spark image
+      run: |
+        docker pull apache/spark:3.5.0
+
+    - name: Make scripts executable
+      run: |
+        chmod +x scripts/test_docker_integration.py
+        chmod +x spark-jobs/*.py
+
+    - name: Run extended integration tests
+      run: |
+        # Modify test script to run extended tests
+        python scripts/test_docker_integration.py --verbose --profiles with-spark,extended
+      env:
+        PYTHONUNBUFFERED: 1
+      continue-on-error: true
+
+    - name: Run individual test jobs
+      run: |
+        echo "Starting Spark services..."
+        docker compose --profile with-spark up -d
+
+        # Wait for services
+        sleep 30
+
+        echo "Running memory-intensive job..."
+        docker exec spark-master /opt/spark/bin/spark-submit \
+          --master spark://spark-master:7077 \
+          /opt/spark-jobs/memory_intensive_job.py || true
+
+        sleep 10
+
+        echo "Running CPU-intensive job..."
+        docker exec spark-master /opt/spark/bin/spark-submit \
+          --master spark://spark-master:7077 \
+          /opt/spark-jobs/cpu_intensive_job.py || true
+
+        sleep 10
+
+        echo "Running skewed data job..."
+        docker exec spark-master /opt/spark/bin/spark-submit \
+          --master spark://spark-master:7077 \
+          /opt/spark-jobs/skewed_data_job.py || true
+
+    - name: Collect test results
+      if: always()
+      run: |
+        echo "=== Event Logs Generated ==="
+        ls -lh spark-events/
+        echo ""
+        echo "=== History Server Applications ==="
+        curl -s http://localhost:18080/api/v1/applications | jq '.' || echo "Not accessible"
+
+    - name: Stop services
+      if: always()
+      run: |
+        docker compose --profile with-spark down -v
+
+    - name: Upload extended test artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: spark-event-logs-extended
+        path: spark-events/
+        retention-days: 7
