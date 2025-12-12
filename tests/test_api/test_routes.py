@@ -80,7 +80,7 @@ def sample_spark_application():
         instance_type="m5.xlarge",
         estimated_cost=5.50,
         tags={"job_type": "etl"},
-        spark_configs={"spark.sql.shuffle.partitions": "200"}
+        spark_configs={"spark.sql.shuffle.partitions": "200"},
     )
     return app
 
