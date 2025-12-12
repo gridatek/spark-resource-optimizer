@@ -445,6 +445,6 @@ class TestHistoryServerCollector:
         # Should not raise exception, just skip bad apps
         job_data = collector.collect()
 
-        # App-2 should be skipped due to error, but app-1 might not convert properly
-        # without full data, so we just check it doesn't crash
-        assert len(job_data) == 0  # Both will fail due to missing data
+        # App-1 should succeed with minimal data, app-2 should be skipped due to error
+        assert len(job_data) == 1
+        assert job_data[0]["app_id"] == "app-1"

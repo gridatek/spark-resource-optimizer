@@ -107,6 +107,7 @@ jobs:
 
     - name: Upload event logs as artifacts
       if: always()
+      continue-on-error: true
       uses: actions/upload-artifact@v4
       with:
         name: spark-event-logs
@@ -199,6 +200,7 @@ jobs:
 
     - name: Upload extended test artifacts
       if: always()
+      continue-on-error: true
       uses: actions/upload-artifact@v4
       with:
         name: spark-event-logs-extended
