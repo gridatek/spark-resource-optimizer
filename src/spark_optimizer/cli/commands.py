@@ -461,6 +461,167 @@ def serve(host: str, port: int, debug: bool, db_url: str):
     run_server(host=host, port=port, debug=debug, db_url=db_url)
 
 
+# Database migration commands
+@cli.group()
+def db():
+    """Database migration commands"""
+    pass
+
+
+@db.command(name="init")
+@click.option("--db-url", default="sqlite:///spark_optimizer.db", help="Database URL")
+def db_init(db_url: str):
+    """Initialize database schema (run all migrations)"""
+    click.echo(f"Initializing database: {db_url}")
+
+    try:
+        database = Database(db_url)
+        database.create_tables()
+        click.echo("✓ Database initialized successfully")
+    except Exception as e:
+        click.echo(f"✗ Failed to initialize database: {e}", err=True)
+        sys.exit(1)
+
+
+@db.command(name="upgrade")
+@click.option("--db-url", default="sqlite:///spark_optimizer.db", help="Database URL")
+@click.option(
+    "--revision",
+    default="head",
+    help="Target revision (default: head for latest)",
+)
+def db_upgrade(db_url: str, revision: str):
+    """Upgrade database to a later version"""
+    click.echo(f"Upgrading database to revision: {revision}")
+
+    try:
+        database = Database(db_url)
+        database.run_migrations(revision)
+        click.echo("✓ Database upgrade completed successfully")
+    except Exception as e:
+        click.echo(f"✗ Failed to upgrade database: {e}", err=True)
+        sys.exit(1)
+
+
+@db.command(name="downgrade")
+@click.option("--db-url", default="sqlite:///spark_optimizer.db", help="Database URL")
+@click.option(
+    "--revision",
+    default="-1",
+    help="Target revision (default: -1 for previous)",
+)
+def db_downgrade(db_url: str, revision: str):
+    """Downgrade database to a previous version"""
+    click.echo(f"Downgrading database to revision: {revision}")
+
+    try:
+        database = Database(db_url)
+        database.downgrade_migration(revision)
+        click.echo("✓ Database downgrade completed successfully")
+    except Exception as e:
+        click.echo(f"✗ Failed to downgrade database: {e}", err=True)
+        sys.exit(1)
+
+
+@db.command(name="current")
+@click.option("--db-url", default="sqlite:///spark_optimizer.db", help="Database URL")
+def db_current(db_url: str):
+    """Display current database revision"""
+    from alembic import command
+    from alembic.config import Config
+
+    try:
+        # Get the project root directory (where alembic.ini is located)
+        project_root = Path(__file__).parent.parent.parent.parent
+        alembic_ini_path = project_root / "alembic.ini"
+
+        if not alembic_ini_path.exists():
+            click.echo(f"✗ Alembic configuration not found at {alembic_ini_path}", err=True)
+            sys.exit(1)
+
+        # Create Alembic config
+        alembic_cfg = Config(str(alembic_ini_path))
+        alembic_cfg.set_main_option("sqlalchemy.url", db_url)
+
+        # Show current revision
+        click.echo("Current database revision:")
+        command.current(alembic_cfg, verbose=True)
+
+    except Exception as e:
+        click.echo(f"✗ Failed to get current revision: {e}", err=True)
+        sys.exit(1)
+
+
+@db.command(name="history")
+@click.option("--db-url", default="sqlite:///spark_optimizer.db", help="Database URL")
+@click.option(
+    "--verbose",
+    is_flag=True,
+    help="Show detailed migration information",
+)
+def db_history(db_url: str, verbose: bool):
+    """Display migration history"""
+    from alembic import command
+    from alembic.config import Config
+
+    try:
+        # Get the project root directory (where alembic.ini is located)
+        project_root = Path(__file__).parent.parent.parent.parent
+        alembic_ini_path = project_root / "alembic.ini"
+
+        if not alembic_ini_path.exists():
+            click.echo(f"✗ Alembic configuration not found at {alembic_ini_path}", err=True)
+            sys.exit(1)
+
+        # Create Alembic config
+        alembic_cfg = Config(str(alembic_ini_path))
+        alembic_cfg.set_main_option("sqlalchemy.url", db_url)
+
+        # Show migration history
+        click.echo("Migration history:")
+        command.history(alembic_cfg, verbose=verbose)
+
+    except Exception as e:
+        click.echo(f"✗ Failed to get migration history: {e}", err=True)
+        sys.exit(1)
+
+
+@db.command(name="stamp")
+@click.option("--db-url", default="sqlite:///spark_optimizer.db", help="Database URL")
+@click.option(
+    "--revision",
+    required=True,
+    help="Revision to stamp database with",
+)
+def db_stamp(db_url: str, revision: str):
+    """Mark database as being at a specific revision without running migrations"""
+    from alembic import command
+    from alembic.config import Config
+
+    click.echo(f"Stamping database with revision: {revision}")
+
+    try:
+        # Get the project root directory (where alembic.ini is located)
+        project_root = Path(__file__).parent.parent.parent.parent
+        alembic_ini_path = project_root / "alembic.ini"
+
+        if not alembic_ini_path.exists():
+            click.echo(f"✗ Alembic configuration not found at {alembic_ini_path}", err=True)
+            sys.exit(1)
+
+        # Create Alembic config
+        alembic_cfg = Config(str(alembic_ini_path))
+        alembic_cfg.set_main_option("sqlalchemy.url", db_url)
+
+        # Stamp database
+        command.stamp(alembic_cfg, revision)
+        click.echo("✓ Database stamped successfully")
+
+    except Exception as e:
+        click.echo(f"✗ Failed to stamp database: {e}", err=True)
+        sys.exit(1)
+
+
 def parse_size_string(size_str: str) -> Optional[int]:
     """Parse size string like '10GB' to bytes"""
     size_str = size_str.upper().strip()

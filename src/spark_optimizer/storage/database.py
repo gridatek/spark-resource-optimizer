@@ -1,10 +1,16 @@
 """Database connection and session management."""
 
+import logging
 from contextlib import contextmanager
+from pathlib import Path
 from typing import Any, Dict, Generator
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.ext.declarative import declarative_base
+from alembic import command
+from alembic.config import Config
+
+logger = logging.getLogger(__name__)
 
 Base = declarative_base()  # type: ignore[misc]
 
@@ -22,10 +28,74 @@ class Database:
         self.SessionLocal = sessionmaker(
             autocommit=False, autoflush=False, bind=self.engine
         )
+        self.connection_string = connection_string
 
     def create_tables(self):
-        """Create all database tables."""
-        Base.metadata.create_all(bind=self.engine)
+        """Create all database tables using Alembic migrations.
+
+        This method runs all pending migrations to bring the database
+        to the latest schema version.
+        """
+        try:
+            self.run_migrations()
+        except Exception as e:
+            logger.warning(
+                f"Failed to run migrations: {e}. Falling back to direct table creation."
+            )
+            # Fallback to direct table creation for backwards compatibility
+            Base.metadata.create_all(bind=self.engine)
+
+    def run_migrations(self, revision: str = "head"):
+        """Run Alembic migrations programmatically.
+
+        Args:
+            revision: Target revision (default: "head" for latest)
+        """
+        # Get the project root directory (where alembic.ini is located)
+        project_root = Path(__file__).parent.parent.parent.parent
+        alembic_ini_path = project_root / "alembic.ini"
+
+        if not alembic_ini_path.exists():
+            raise FileNotFoundError(
+                f"Alembic configuration not found at {alembic_ini_path}"
+            )
+
+        # Create Alembic config
+        alembic_cfg = Config(str(alembic_ini_path))
+
+        # Override database URL with the current connection string
+        alembic_cfg.set_main_option("sqlalchemy.url", self.connection_string)
+
+        # Run migrations
+        logger.info(f"Running migrations to revision: {revision}")
+        command.upgrade(alembic_cfg, revision)
+        logger.info("Migrations completed successfully")
+
+    def downgrade_migration(self, revision: str = "-1"):
+        """Downgrade database to a previous migration.
+
+        Args:
+            revision: Target revision (default: "-1" for previous revision)
+        """
+        # Get the project root directory (where alembic.ini is located)
+        project_root = Path(__file__).parent.parent.parent.parent
+        alembic_ini_path = project_root / "alembic.ini"
+
+        if not alembic_ini_path.exists():
+            raise FileNotFoundError(
+                f"Alembic configuration not found at {alembic_ini_path}"
+            )
+
+        # Create Alembic config
+        alembic_cfg = Config(str(alembic_ini_path))
+
+        # Override database URL with the current connection string
+        alembic_cfg.set_main_option("sqlalchemy.url", self.connection_string)
+
+        # Run downgrade
+        logger.info(f"Downgrading to revision: {revision}")
+        command.downgrade(alembic_cfg, revision)
+        logger.info("Downgrade completed successfully")
 
     def drop_tables(self):
         """Drop all database tables."""
