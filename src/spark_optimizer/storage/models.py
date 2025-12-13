@@ -1,7 +1,16 @@
 """Database models for storing Spark job data."""
 
 from datetime import datetime
-from sqlalchemy import Column, Integer, BigInteger, String, Float, DateTime, JSON, ForeignKey
+from sqlalchemy import (
+    Column,
+    Integer,
+    BigInteger,
+    String,
+    Float,
+    DateTime,
+    JSON,
+    ForeignKey,
+)
 from sqlalchemy.orm import relationship
 from .database import Base
 
