@@ -1,0 +1,275 @@
+name: AWS EMR Integration Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      aws_region:
+        description: 'AWS Region'
+        required: true
+        default: 'us-west-2'
+      cluster_id:
+        description: 'EMR Cluster ID (required for job submission)'
+        required: true
+      s3_bucket:
+        description: 'S3 bucket for uploading Spark jobs (e.g., my-emr-bucket)'
+        required: true
+      max_clusters:
+        description: 'Maximum clusters to collect from'
+        required: false
+        default: '5'
+      submit_jobs:
+        description: 'Submit sample Spark jobs to generate data'
+        required: false
+        default: 'true'
+
+jobs:
+  test-emr-integration:
+    name: Test AWS EMR Connection and Data Collection
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v6
+      with:
+        python-version: '3.13'
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[aws]"
+
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ inputs.aws_region }}
+
+    - name: Verify AWS Access
+      run: |
+        echo "Testing AWS credentials and EMR access..."
+        aws sts get-caller-identity
+        aws emr list-clusters --region ${{ inputs.aws_region }} --active | head -20
+
+    - name: Setup database
+      run: |
+        python scripts/setup_db.py
+        ls -la *.db
+
+    - name: Upload Spark Jobs to S3
+      if: ${{ inputs.submit_jobs == 'true' }}
+      run: |
+        echo "Uploading Spark jobs to S3..."
+        aws s3 cp spark-jobs/ s3://${{ inputs.s3_bucket }}/spark-jobs/ --recursive --exclude "*.md"
+        echo "✓ Jobs uploaded to s3://${{ inputs.s3_bucket }}/spark-jobs/"
+
+    - name: Submit Sample Spark Jobs to EMR
+      if: ${{ inputs.submit_jobs == 'true' }}
+      run: |
+        echo "Submitting Spark jobs to EMR cluster ${{ inputs.cluster_id }}..."
+
+        # Submit simple wordcount job
+        STEP_ID_1=$(aws emr add-steps \
+          --cluster-id ${{ inputs.cluster_id }} \
+          --steps Type=Spark,Name="Simple WordCount",ActionOnFailure=CONTINUE,Args=[s3://${{ inputs.s3_bucket }}/spark-jobs/simple_wordcount.py] \
+          --region ${{ inputs.aws_region }} \
+          --query 'StepIds[0]' --output text)
+        echo "✓ Submitted Simple WordCount: $STEP_ID_1"
+
+        # Submit inefficient job
+        STEP_ID_2=$(aws emr add-steps \
+          --cluster-id ${{ inputs.cluster_id }} \
+          --steps Type=Spark,Name="Inefficient Job",ActionOnFailure=CONTINUE,Args=[s3://${{ inputs.s3_bucket }}/spark-jobs/inefficient_job.py] \
+          --region ${{ inputs.aws_region }} \
+          --query 'StepIds[0]' --output text)
+        echo "✓ Submitted Inefficient Job: $STEP_ID_2"
+
+        # Submit memory intensive job
+        STEP_ID_3=$(aws emr add-steps \
+          --cluster-id ${{ inputs.cluster_id }} \
+          --steps Type=Spark,Name="Memory Intensive Job",ActionOnFailure=CONTINUE,Args=[s3://${{ inputs.s3_bucket }}/spark-jobs/memory_intensive_job.py] \
+          --region ${{ inputs.aws_region }} \
+          --query 'StepIds[0]' --output text)
+        echo "✓ Submitted Memory Intensive Job: $STEP_ID_3"
+
+        echo "STEP_IDS=$STEP_ID_1,$STEP_ID_2,$STEP_ID_3" >> $GITHUB_ENV
+
+    - name: Wait for Jobs to Complete
+      if: ${{ inputs.submit_jobs == 'true' }}
+      run: |
+        echo "Waiting for Spark jobs to complete..."
+        IFS=',' read -ra STEPS <<< "$STEP_IDS"
+
+        for step_id in "${STEPS[@]}"; do
+          echo "Waiting for step: $step_id"
+
+          while true; do
+            STATUS=$(aws emr describe-step \
+              --cluster-id ${{ inputs.cluster_id }} \
+              --step-id "$step_id" \
+              --region ${{ inputs.aws_region }} \
+              --query 'Step.Status.State' --output text)
+
+            echo "  Status: $STATUS"
+
+            if [[ "$STATUS" == "COMPLETED" ]]; then
+              echo "  ✓ Step completed successfully"
+              break
+            elif [[ "$STATUS" == "FAILED" || "$STATUS" == "CANCELLED" ]]; then
+              echo "  ⚠ Step $STATUS (continuing anyway)"
+              break
+            fi
+
+            sleep 10
+          done
+        done
+
+        echo "✓ All jobs finished"
+
+    - name: Test EMR Collector (List Clusters)
+      if: ${{ !inputs.submit_jobs || inputs.submit_jobs == 'false' }}
+      run: |
+        echo "Testing EMR collector with cluster discovery..."
+        python -c "
+        from spark_optimizer.collectors.emr_collector import EMRCollector
+
+        collector = EMRCollector(
+            region='${{ inputs.aws_region }}',
+            config={
+                'max_clusters': int('${{ inputs.max_clusters }}'),
+                'collect_costs': True
+            }
+        )
+
+        print('✓ EMR Collector initialized successfully')
+        print(f'Region: {collector.region}')
+        print(f'Max clusters: {collector.max_clusters}')
+
+        # Validate configuration
+        if collector.validate_config():
+            print('✓ EMR connection validated')
+        else:
+            print('✗ EMR connection validation failed')
+            exit(1)
+
+        # Collect data
+        print('Starting data collection...')
+        jobs = collector.collect()
+        print(f'✓ Collected data for {len(jobs)} applications')
+
+        if jobs:
+            print('\\nSample application:')
+            print(f'  App ID: {jobs[0].get(\"app_id\")}')
+            print(f'  Name: {jobs[0].get(\"app_name\")}')
+            print(f'  Cluster: {jobs[0].get(\"cluster_type\")}')
+            print(f'  Status: {jobs[0].get(\"status\")}')
+        "
+
+    - name: Test EMR Collector (Specific Cluster)
+      run: |
+        echo "Testing EMR collector with cluster ID: ${{ inputs.cluster_id }}"
+        python -c "
+        from spark_optimizer.collectors.emr_collector import EMRCollector
+
+        collector = EMRCollector(
+            region='${{ inputs.aws_region }}',
+            config={
+                'cluster_ids': ['${{ inputs.cluster_id }}'],
+                'collect_costs': True
+            }
+        )
+
+        print('✓ EMR Collector initialized')
+
+        # Collect data
+        jobs = collector.collect()
+        print(f'✓ Collected data for {len(jobs)} applications from cluster ${{ inputs.cluster_id }}')
+
+        if jobs:
+            for i, job in enumerate(jobs[:3]):  # Show first 3
+                print(f'\\nApplication {i+1}:')
+                print(f'  App ID: {job.get(\"app_id\")}')
+                print(f'  Name: {job.get(\"app_name\")}')
+                print(f'  Duration: {job.get(\"duration_ms\")}ms')
+        else:
+            print('⚠ No applications found')
+        "
+
+    - name: Save to Database
+      run: |
+        echo "Saving collected data to database..."
+        python -c "
+        from spark_optimizer.collectors.emr_collector import EMRCollector
+        from spark_optimizer.storage.database import Database
+
+        collector = EMRCollector(
+            region='${{ inputs.aws_region }}',
+            config={'max_clusters': int('${{ inputs.max_clusters }}')}
+        )
+
+        db = Database('sqlite:///spark_optimizer.db')
+        jobs = collector.collect()
+
+        saved = 0
+        for job in jobs:
+            try:
+                db.save_job(job)
+                saved += 1
+            except Exception as e:
+                print(f'Error saving job: {e}')
+
+        print(f'✓ Saved {saved}/{len(jobs)} jobs to database')
+        "
+
+    - name: Verify Database
+      run: |
+        python -c "
+        from spark_optimizer.storage.database import Database
+        from spark_optimizer.storage.models import SparkApplication
+
+        db = Database('sqlite:///spark_optimizer.db')
+        with db.get_session() as session:
+            count = session.query(SparkApplication).count()
+            print(f'Total applications in database: {count}')
+
+            apps = session.query(SparkApplication).limit(5).all()
+            print(f'\\nRecent applications:')
+            for app in apps:
+                print(f'  - {app.app_id}: {app.app_name} ({app.cluster_type})')
+        "
+
+    - name: Generate Summary
+      if: always()
+      run: |
+        echo "## AWS EMR Integration Test Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Region:** ${{ inputs.aws_region }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Max Clusters:** ${{ inputs.max_clusters }}" >> $GITHUB_STEP_SUMMARY
+        if [ -n "${{ inputs.cluster_id }}" ]; then
+          echo "**Cluster ID:** ${{ inputs.cluster_id }}" >> $GITHUB_STEP_SUMMARY
+        fi
+        echo "" >> $GITHUB_STEP_SUMMARY
+
+        if [ -f spark_optimizer.db ]; then
+          python -c "
+        from spark_optimizer.storage.database import Database
+        from spark_optimizer.storage.models import SparkApplication
+
+        db = Database('sqlite:///spark_optimizer.db')
+        with db.get_session() as session:
+            count = session.query(SparkApplication).count()
+            print(f'**Applications Collected:** {count}')
+        " >> $GITHUB_STEP_SUMMARY
+        fi
+
+    - name: Upload database artifact
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: emr-test-database
+        path: spark_optimizer.db
+        retention-days: 7

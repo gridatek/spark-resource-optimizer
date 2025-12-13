@@ -1,0 +1,335 @@
+name: GCP Dataproc Integration Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      project_id:
+        description: 'GCP Project ID'
+        required: true
+      region:
+        description: 'GCP Region'
+        required: true
+        default: 'us-central1'
+      cluster_name:
+        description: 'Dataproc Cluster Name (required for job submission)'
+        required: true
+      gcs_bucket:
+        description: 'GCS bucket for uploading jobs (e.g., my-dataproc-bucket)'
+        required: true
+      max_clusters:
+        description: 'Maximum clusters to collect from'
+        required: false
+        default: '5'
+      submit_jobs:
+        description: 'Submit sample Spark jobs to generate data'
+        required: false
+        default: 'true'
+
+jobs:
+  test-dataproc-integration:
+    name: Test GCP Dataproc Connection and Data Collection
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v6
+      with:
+        python-version: '3.13'
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[gcp]"
+
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+
+    - name: Verify GCP Access
+      run: |
+        echo "Testing GCP credentials and Dataproc access..."
+        gcloud config set project ${{ inputs.project_id }}
+        gcloud auth list
+        echo ""
+        echo "Listing Dataproc clusters..."
+        gcloud dataproc clusters list --region=${{ inputs.region }} || echo "No clusters found or access denied"
+
+    - name: Setup database
+      run: |
+        python scripts/setup_db.py
+        ls -la *.db
+
+    - name: Upload Spark Jobs to GCS
+      if: ${{ inputs.submit_jobs == 'true' }}
+      run: |
+        echo "Uploading Spark jobs to GCS..."
+        gsutil -m cp spark-jobs/*.py gs://${{ inputs.gcs_bucket }}/spark-jobs/
+        echo "✓ Jobs uploaded to gs://${{ inputs.gcs_bucket }}/spark-jobs/"
+
+    - name: Submit Sample Spark Jobs to Dataproc
+      if: ${{ inputs.submit_jobs == 'true' }}
+      run: |
+        echo "Submitting Spark jobs to Dataproc cluster ${{ inputs.cluster_name }}..."
+
+        # Submit simple wordcount job
+        JOB_ID_1=$(gcloud dataproc jobs submit pyspark \
+          gs://${{ inputs.gcs_bucket }}/spark-jobs/simple_wordcount.py \
+          --cluster=${{ inputs.cluster_name }} \
+          --region=${{ inputs.region }} \
+          --project=${{ inputs.project_id }} \
+          --format="value(reference.jobId)")
+        echo "✓ Submitted Simple WordCount: $JOB_ID_1"
+
+        # Submit inefficient job
+        JOB_ID_2=$(gcloud dataproc jobs submit pyspark \
+          gs://${{ inputs.gcs_bucket }}/spark-jobs/inefficient_job.py \
+          --cluster=${{ inputs.cluster_name }} \
+          --region=${{ inputs.region }} \
+          --project=${{ inputs.project_id }} \
+          --format="value(reference.jobId)")
+        echo "✓ Submitted Inefficient Job: $JOB_ID_2"
+
+        # Submit memory intensive job
+        JOB_ID_3=$(gcloud dataproc jobs submit pyspark \
+          gs://${{ inputs.gcs_bucket }}/spark-jobs/memory_intensive_job.py \
+          --cluster=${{ inputs.cluster_name }} \
+          --region=${{ inputs.region }} \
+          --project=${{ inputs.project_id }} \
+          --format="value(reference.jobId)")
+        echo "✓ Submitted Memory Intensive Job: $JOB_ID_3"
+
+        echo "JOB_IDS=$JOB_ID_1,$JOB_ID_2,$JOB_ID_3" >> $GITHUB_ENV
+
+    - name: Wait for Jobs to Complete
+      if: ${{ inputs.submit_jobs == 'true' }}
+      run: |
+        echo "Waiting for Spark jobs to complete..."
+        IFS=',' read -ra JOBS <<< "$JOB_IDS"
+
+        for job_id in "${JOBS[@]}"; do
+          echo "Waiting for job: $job_id"
+
+          while true; do
+            STATUS=$(gcloud dataproc jobs describe "$job_id" \
+              --region=${{ inputs.region }} \
+              --project=${{ inputs.project_id }} \
+              --format="value(status.state)")
+
+            echo "  Status: $STATUS"
+
+            if [[ "$STATUS" == "DONE" ]]; then
+              echo "  ✓ Job completed successfully"
+              break
+            elif [[ "$STATUS" == "ERROR" || "$STATUS" == "CANCELLED" ]]; then
+              echo "  ⚠ Job $STATUS (continuing anyway)"
+              break
+            fi
+
+            sleep 10
+          done
+        done
+
+        echo "✓ All jobs finished"
+
+    - name: Test Dataproc Collector (List Clusters)
+      if: ${{ !inputs.submit_jobs || inputs.submit_jobs == 'false' }}
+      run: |
+        echo "Testing Dataproc collector with cluster discovery..."
+        python -c "
+        from spark_optimizer.collectors.dataproc_collector import DataprocCollector
+
+        collector = DataprocCollector(
+            project_id='${{ inputs.project_id }}',
+            region='${{ inputs.region }}',
+            config={
+                'max_clusters': int('${{ inputs.max_clusters }}'),
+                'collect_costs': True,
+                'days_back': 7
+            }
+        )
+
+        print('✓ Dataproc Collector initialized successfully')
+        print(f'Project: {collector.project_id}')
+        print(f'Region: {collector.region}')
+        print(f'Max clusters: {collector.max_clusters}')
+
+        # Validate configuration
+        if collector.validate_config():
+            print('✓ Dataproc connection validated')
+        else:
+            print('✗ Dataproc connection validation failed')
+            exit(1)
+
+        # Collect data
+        print('\\nStarting data collection...')
+        jobs = collector.collect()
+        print(f'✓ Collected data for {len(jobs)} applications')
+
+        if jobs:
+            print('\\nSample applications:')
+            for i, job in enumerate(jobs[:3]):
+                print(f'\\n{i+1}. {job.get(\"app_name\")}')
+                print(f'   App ID: {job.get(\"app_id\")}')
+                print(f'   Cluster: {job.get(\"cluster_type\")}')
+                print(f'   Status: {job.get(\"status\")}')
+                print(f'   Duration: {job.get(\"duration_ms\")}ms')
+        else:
+            print('⚠ No applications found')
+        "
+
+    - name: Test Dataproc Collector (Specific Cluster)
+      run: |
+        echo "Testing Dataproc collector with cluster: ${{ inputs.cluster_name }}"
+        python -c "
+        from spark_optimizer.collectors.dataproc_collector import DataprocCollector
+
+        collector = DataprocCollector(
+            project_id='${{ inputs.project_id }}',
+            region='${{ inputs.region }}',
+            config={
+                'cluster_names': ['${{ inputs.cluster_name }}'],
+                'collect_costs': True,
+                'days_back': 7
+            }
+        )
+
+        print('✓ Dataproc Collector initialized')
+
+        # Collect data
+        jobs = collector.collect()
+        print(f'✓ Collected data for {len(jobs)} applications from cluster ${{ inputs.cluster_name }}')
+
+        if jobs:
+            for i, job in enumerate(jobs[:5]):
+                print(f'\\nApplication {i+1}:')
+                print(f'  App ID: {job.get(\"app_id\")}')
+                print(f'  Name: {job.get(\"app_name\")}')
+                print(f'  Executors: {job.get(\"num_executors\")}')
+                print(f'  Memory: {job.get(\"executor_memory_mb\")}MB')
+                print(f'  Duration: {job.get(\"duration_ms\")}ms')
+        else:
+            print('⚠ No applications found')
+        "
+
+    - name: List Cluster Details
+      run: |
+        echo "Fetching cluster details..."
+        python -c "
+        from google.cloud import dataproc_v1
+
+        client = dataproc_v1.ClusterControllerClient(
+            client_options={'api_endpoint': '${{ inputs.region }}-dataproc.googleapis.com:443'}
+        )
+
+        request = dataproc_v1.ListClustersRequest(
+            project_id='${{ inputs.project_id }}',
+            region='${{ inputs.region }}'
+        )
+
+        print('Dataproc Clusters:')
+        for cluster in client.list_clusters(request=request):
+            print(f'\\n- {cluster.cluster_name}')
+            print(f'  Status: {cluster.status.state.name}')
+            print(f'  Master: {cluster.config.master_config.num_instances} nodes')
+            print(f'  Workers: {cluster.config.worker_config.num_instances} nodes')
+        "
+
+    - name: Save to Database
+      run: |
+        echo "Saving collected data to database..."
+        python -c "
+        from spark_optimizer.collectors.dataproc_collector import DataprocCollector
+        from spark_optimizer.storage.database import Database
+
+        collector = DataprocCollector(
+            project_id='${{ inputs.project_id }}',
+            region='${{ inputs.region }}',
+            config={
+                'max_clusters': int('${{ inputs.max_clusters }}'),
+                'days_back': 7
+            }
+        )
+
+        db = Database('sqlite:///spark_optimizer.db')
+        jobs = collector.collect()
+
+        saved = 0
+        errors = 0
+        for job in jobs:
+            try:
+                db.save_job(job)
+                saved += 1
+            except Exception as e:
+                errors += 1
+                if errors <= 3:
+                    print(f'Error: {e}')
+
+        print(f'✓ Saved {saved}/{len(jobs)} jobs to database')
+        if errors > 0:
+            print(f'⚠ {errors} jobs had errors')
+        "
+
+    - name: Verify Database
+      run: |
+        python -c "
+        from spark_optimizer.storage.database import Database
+        from spark_optimizer.storage.models import SparkApplication
+
+        db = Database('sqlite:///spark_optimizer.db')
+        with db.get_session() as session:
+            count = session.query(SparkApplication).count()
+            print(f'Total applications in database: {count}')
+
+            apps = session.query(SparkApplication).filter(
+                SparkApplication.cluster_type == 'dataproc'
+            ).limit(5).all()
+
+            print(f'\\nDataproc applications:')
+            for app in apps:
+                print(f'  - {app.app_name}')
+                print(f'    Config: {app.num_executors} executors x {app.executor_cores} cores')
+                print(f'    Memory: {app.executor_memory_mb}MB per executor')
+        "
+
+    - name: Generate Summary
+      if: always()
+      run: |
+        echo "## GCP Dataproc Integration Test Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Project:** ${{ inputs.project_id }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Region:** ${{ inputs.region }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Max Clusters:** ${{ inputs.max_clusters }}" >> $GITHUB_STEP_SUMMARY
+        if [ -n "${{ inputs.cluster_name }}" ]; then
+          echo "**Cluster Name:** ${{ inputs.cluster_name }}" >> $GITHUB_STEP_SUMMARY
+        fi
+        echo "" >> $GITHUB_STEP_SUMMARY
+
+        if [ -f spark_optimizer.db ]; then
+          python -c "
+        from spark_optimizer.storage.database import Database
+        from spark_optimizer.storage.models import SparkApplication
+
+        db = Database('sqlite:///spark_optimizer.db')
+        with db.get_session() as session:
+            count = session.query(SparkApplication).filter(
+                SparkApplication.cluster_type == 'dataproc'
+            ).count()
+            print(f'**Applications Collected:** {count}')
+        " >> $GITHUB_STEP_SUMMARY
+        fi
+
+    - name: Upload database artifact
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: dataproc-test-database
+        path: spark_optimizer.db
+        retention-days: 7

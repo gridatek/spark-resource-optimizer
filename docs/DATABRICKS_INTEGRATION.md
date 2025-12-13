@@ -13,6 +13,81 @@ The Databricks collector enables you to:
 - 🎯 Get Databricks-specific cluster type recommendations
 - ⚡ Optimize resource configurations for production workloads
 
+## Free Testing Options
+
+### Databricks Free Trial & Community Edition
+
+#### Option 1: Databricks Free Trial (Recommended for Testing)
+Get **14 days of free access** to a full Databricks workspace:
+
+**AWS Databricks:**
+1. Visit: https://databricks.com/try-databricks
+2. Sign up for free trial
+3. Get $200 in credits or 14-day trial
+4. Full API access for testing the integration
+
+**Azure Databricks:**
+1. Visit: https://azure.microsoft.com/free/
+2. Get $200 Azure credits (30 days)
+3. Create Databricks workspace
+4. Test with free credits
+
+**GCP Databricks:**
+1. Visit: https://cloud.google.com/free
+2. Get $300 GCP credits (90 days)
+3. Create Databricks workspace
+4. Test with free credits
+
+#### Option 2: Databricks Community Edition (Limited)
+**Free forever, but with limitations:**
+- **Cannot use API** (required for this integration)
+- No custom clusters
+- Single-node cluster only
+- ⚠️ **Not suitable for testing this integration workflow**
+
+#### Option 3: Minimal Cost Testing
+To keep costs under **$0.50 for testing**:
+
+1. **Use smallest cluster:**
+   ```python
+   # Example: Azure
+   Cluster Type: Standard_DS3_v2 (4 cores, 14 GB)
+   Cost: ~$0.19/hr (VM) + ~$0.30/hr (DBU) = ~$0.49/hr
+
+   # Example: AWS
+   Cluster Type: i3.xlarge (4 cores, 30.5 GB)
+   Cost: ~$0.31/hr (EC2) + ~$0.23/hr (DBU) = ~$0.54/hr
+   ```
+
+2. **Test quickly and terminate:**
+   - Run the integration test (~20-30 minutes)
+   - Terminate cluster immediately after
+   - Total cost: **~$0.25-0.50**
+
+3. **Use cluster policies for auto-termination:**
+   ```json
+   {
+     "autotermination_minutes": {
+       "type": "fixed",
+       "value": 30
+     }
+   }
+   ```
+
+4. **Clean up immediately:**
+   ```bash
+   # Terminate cluster via UI or CLI
+   databricks clusters delete --cluster-id YOUR_CLUSTER_ID
+   ```
+
+#### Option 4: Test with Existing Clusters
+If you already have Databricks clusters running:
+- Set `submit_jobs: false` in the GitHub Actions workflow
+- Test data collection from existing job runs
+- No additional cost
+
+**Pricing Calculator:** https://databricks.com/product/pricing
+
 ## Prerequisites
 
 ### 1. Install requests library
@@ -272,6 +347,60 @@ def collect_from_databricks():
         "workspace": data.get("workspace_url")
     })
 ```
+
+## Testing Integration with GitHub Actions
+
+The project includes a manual GitHub Actions workflow to test Databricks integration with real data.
+
+### Running the Integration Test
+
+1. **Navigate to Actions** in your GitHub repository
+2. **Select "Databricks Integration Test"** workflow
+3. **Click "Run workflow"** and provide:
+   - **Workspace URL**: Your Databricks workspace URL (e.g., `https://dbc-xxx.cloud.databricks.com`)
+   - **Cluster ID**: Your Databricks cluster ID (e.g., `0123-456789-abc123`)
+   - **DBFS Path**: Path for uploading jobs (default: `/FileStore/spark-jobs`)
+   - **Max Jobs**: Maximum jobs to collect (default: 10)
+   - **Submit Jobs**: Whether to submit sample jobs (default: true)
+
+### Required GitHub Secrets
+
+Configure this secret in your repository settings:
+
+- `DATABRICKS_TOKEN`: Your Databricks personal access token
+
+### What the Workflow Does
+
+1. **Uploads Sample Jobs** - Uploads Spark jobs from `spark-jobs/` to DBFS
+2. **Submits Jobs** - Runs 3 sample Spark applications via Jobs API:
+   - Simple WordCount
+   - Inefficient Job (demonstrates optimization opportunities)
+   - Memory Intensive Job
+3. **Waits for Completion** - Monitors run status until finished
+4. **Collects Data** - Uses DatabricksCollector to gather metrics
+5. **Saves to Database** - Stores results in SQLite
+6. **Uploads Artifact** - Database file available for download
+
+### Example Output
+
+```
+✓ Jobs uploaded to DBFS:/FileStore/spark-jobs
+✓ Submitted Simple WordCount: Run ID 123
+✓ Submitted Inefficient Job: Run ID 456
+✓ Submitted Memory Intensive Job: Run ID 789
+✓ All jobs finished
+✓ Collected 3 applications from cluster 0123-456789-abc123
+✓ Saved 3/3 jobs to database
+Total applications in database: 3
+```
+
+### Using Without Job Submission
+
+To test data collection from existing jobs without submitting new ones:
+
+1. Set **Submit Jobs** to `false`
+2. Provide existing **Cluster ID** with completed runs
+3. Workflow will only collect and analyze existing data
 
 ## Automated Collection
 

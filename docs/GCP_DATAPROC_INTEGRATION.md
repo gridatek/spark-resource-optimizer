@@ -13,6 +13,83 @@ The Dataproc collector enables you to:
 - ⚡ Optimize resource configurations for production workloads
 - 🔄 Support for preemptible workers and autoscaling
 
+## Free Testing Options
+
+### GCP Free Tier & Credits (Best Free Option)
+
+#### Option 1: GCP Free Trial (Recommended - $300 Free Credits)
+**Get $300 in free credits valid for 90 days:**
+
+1. Visit: https://cloud.google.com/free
+2. Sign up for GCP (credit card required, but won't be charged)
+3. Get **$300 in credits** (90 days)
+4. Create Dataproc clusters and test extensively for free
+
+**What you can do with $300:**
+- Run ~400+ hours of small Dataproc clusters
+- Test thoroughly without any cost
+- Ideal for learning and integration testing
+
+#### Option 2: GCP Always Free Tier
+After free trial expires, GCP offers **Always Free** tier:
+- **Note:** Dataproc itself is NOT included in Always Free
+- However, you get free Compute Engine usage (limited):
+  - 1 f1-micro VM instance per month
+  - Too small for Dataproc clusters
+- ⚠️ **Not suitable for Dataproc testing**
+
+#### Option 3: Minimal Cost Testing (After Free Credits)
+To keep costs under **$0.30 for testing**:
+
+1. **Use smallest cluster configuration:**
+   ```bash
+   # Example cluster
+   Master: n1-standard-2 (2 cores, 7.5 GB)
+   Workers: 2x n1-standard-2
+   Cost: ~$0.40/hour (Compute) + ~$0.01/hour (Dataproc)
+   Total: ~$0.41/hour
+   ```
+
+2. **Use preemptible workers (up to 80% cheaper):**
+   ```bash
+   gcloud dataproc clusters create test-cluster \
+     --region=us-central1 \
+     --num-workers=2 \
+     --num-preemptible-workers=2 \
+     --worker-machine-type=n1-standard-2 \
+     --preemptible-worker-boot-disk-size=30
+   ```
+   - Preemptible cost: ~$0.10/hour
+   - Great for testing, may be interrupted
+
+3. **Test quickly and delete:**
+   - Run the integration test (~20-30 minutes)
+   - Delete cluster immediately after
+   - Total cost: **~$0.15-0.30**
+
+4. **Auto-delete idle clusters:**
+   ```bash
+   gcloud dataproc clusters create test-cluster \
+     --max-idle=30m \
+     --region=us-central1
+   ```
+
+5. **Clean up immediately:**
+   ```bash
+   # Delete cluster after testing
+   gcloud dataproc clusters delete test-cluster --region=us-central1
+   ```
+
+#### Option 4: Test with Existing Clusters
+If you already have Dataproc clusters running:
+- Set `submit_jobs: false` in the GitHub Actions workflow
+- Test data collection from existing jobs
+- No additional cost
+
+**Pricing Calculator:** https://cloud.google.com/products/calculator
+
+**Pro Tip:** With GCP's $300 free credits, you can test extensively for 90 days at absolutely no cost!
+
 ## Prerequisites
 
 ### 1. Install Google Cloud Libraries
@@ -319,6 +396,61 @@ def collect_from_dataproc():
         "region": data.get("region")
     })
 ```
+
+## Testing Integration with GitHub Actions
+
+The project includes a manual GitHub Actions workflow to test Dataproc integration with real data.
+
+### Running the Integration Test
+
+1. **Navigate to Actions** in your GitHub repository
+2. **Select "GCP Dataproc Integration Test"** workflow
+3. **Click "Run workflow"** and provide:
+   - **Project ID**: Your GCP project ID
+   - **Region**: Your Dataproc region (e.g., `us-central1`)
+   - **Cluster Name**: Your Dataproc cluster name (e.g., `my-cluster`)
+   - **GCS Bucket**: Bucket for uploading jobs (e.g., `my-dataproc-bucket`)
+   - **Max Clusters**: Maximum clusters to collect from (default: 5)
+   - **Submit Jobs**: Whether to submit sample jobs (default: true)
+
+### Required GitHub Secrets
+
+Configure this secret in your repository settings:
+
+- `GCP_CREDENTIALS`: Your GCP service account JSON key (base64 encoded or raw JSON)
+
+### What the Workflow Does
+
+1. **Uploads Sample Jobs** - Uploads Spark jobs from `spark-jobs/` to GCS
+2. **Submits Jobs** - Runs 3 sample Spark applications via `gcloud dataproc jobs submit`:
+   - Simple WordCount
+   - Inefficient Job (demonstrates optimization opportunities)
+   - Memory Intensive Job
+3. **Waits for Completion** - Monitors job status until finished
+4. **Collects Data** - Uses DataprocCollector to gather metrics
+5. **Saves to Database** - Stores results in SQLite
+6. **Uploads Artifact** - Database file available for download
+
+### Example Output
+
+```
+✓ Jobs uploaded to gs://my-bucket/spark-jobs/
+✓ Submitted Simple WordCount: job-abc123
+✓ Submitted Inefficient Job: job-def456
+✓ Submitted Memory Intensive Job: job-ghi789
+✓ All jobs finished
+✓ Collected data for 3 applications from cluster my-cluster
+✓ Saved 3/3 jobs to database
+Total applications in database: 3
+```
+
+### Using Without Job Submission
+
+To test data collection from existing jobs without submitting new ones:
+
+1. Set **Submit Jobs** to `false`
+2. Provide existing **Cluster Name** with completed jobs
+3. Workflow will only collect and analyze existing data
 
 ## Automated Collection
 

@@ -1,0 +1,332 @@
+name: Databricks Integration Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      workspace_url:
+        description: 'Databricks Workspace URL (e.g., https://dbc-xxx.cloud.databricks.com)'
+        required: true
+      cluster_id:
+        description: 'Databricks Cluster ID (required for job submission)'
+        required: true
+      dbfs_path:
+        description: 'DBFS path for uploading jobs (e.g., /FileStore/spark-jobs)'
+        required: false
+        default: '/FileStore/spark-jobs'
+      max_jobs:
+        description: 'Maximum jobs to collect'
+        required: false
+        default: '10'
+      submit_jobs:
+        description: 'Submit sample Spark jobs to generate data'
+        required: false
+        default: 'true'
+
+jobs:
+  test-databricks-integration:
+    name: Test Databricks Connection and Data Collection
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v6
+      with:
+        python-version: '3.13'
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e .
+
+    - name: Verify Databricks Token
+      run: |
+        if [ -z "${{ secrets.DATABRICKS_TOKEN }}" ]; then
+          echo "❌ DATABRICKS_TOKEN secret is not set"
+          exit 1
+        fi
+        echo "✓ Databricks token is configured"
+
+    - name: Setup database
+      run: |
+        python scripts/setup_db.py
+        ls -la *.db
+
+    - name: Upload Spark Jobs to DBFS
+      if: ${{ inputs.submit_jobs == 'true' }}
+      env:
+        DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+      run: |
+        echo "Uploading Spark jobs to DBFS..."
+
+        for job_file in spark-jobs/*.py; do
+          if [ "$job_file" == "spark-jobs/*.py" ]; then continue; fi
+
+          job_name=$(basename "$job_file")
+          echo "Uploading $job_name..."
+
+          # Read file content and base64 encode
+          content=$(base64 -w 0 "$job_file")
+
+          # Upload to DBFS
+          curl -X POST "${{ inputs.workspace_url }}/api/2.0/dbfs/put" \
+            -H "Authorization: Bearer $DATABRICKS_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"path\": \"${{ inputs.dbfs_path }}/$job_name\",
+              \"contents\": \"$content\",
+              \"overwrite\": true
+            }"
+          echo ""
+        done
+
+        echo "✓ Jobs uploaded to DBFS:${{ inputs.dbfs_path }}"
+
+    - name: Submit Sample Spark Jobs to Databricks
+      if: ${{ inputs.submit_jobs == 'true' }}
+      env:
+        DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+      run: |
+        echo "Submitting Spark jobs to Databricks cluster ${{ inputs.cluster_id }}..."
+
+        # Function to submit a job
+        submit_job() {
+          local job_name=$1
+          local job_path=$2
+
+          run_id=$(curl -X POST "${{ inputs.workspace_url }}/api/2.1/jobs/runs/submit" \
+            -H "Authorization: Bearer $DATABRICKS_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"run_name\": \"$job_name\",
+              \"existing_cluster_id\": \"${{ inputs.cluster_id }}\",
+              \"spark_python_task\": {
+                \"python_file\": \"dbfs:$job_path\"
+              }
+            }" | python -c "import sys, json; print(json.load(sys.stdin)['run_id'])")
+
+          echo "$run_id"
+        }
+
+        # Submit jobs
+        RUN_ID_1=$(submit_job "Simple WordCount" "${{ inputs.dbfs_path }}/simple_wordcount.py")
+        echo "✓ Submitted Simple WordCount: Run ID $RUN_ID_1"
+
+        RUN_ID_2=$(submit_job "Inefficient Job" "${{ inputs.dbfs_path }}/inefficient_job.py")
+        echo "✓ Submitted Inefficient Job: Run ID $RUN_ID_2"
+
+        RUN_ID_3=$(submit_job "Memory Intensive Job" "${{ inputs.dbfs_path }}/memory_intensive_job.py")
+        echo "✓ Submitted Memory Intensive Job: Run ID $RUN_ID_3"
+
+        echo "RUN_IDS=$RUN_ID_1,$RUN_ID_2,$RUN_ID_3" >> $GITHUB_ENV
+
+    - name: Wait for Jobs to Complete
+      if: ${{ inputs.submit_jobs == 'true' }}
+      env:
+        DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+      run: |
+        echo "Waiting for Spark jobs to complete..."
+        IFS=',' read -ra RUNS <<< "$RUN_IDS"
+
+        for run_id in "${RUNS[@]}"; do
+          echo "Waiting for run: $run_id"
+
+          while true; do
+            STATUS=$(curl -s "${{ inputs.workspace_url }}/api/2.1/jobs/runs/get?run_id=$run_id" \
+              -H "Authorization: Bearer $DATABRICKS_TOKEN" | \
+              python -c "import sys, json; data=json.load(sys.stdin); print(data['state']['life_cycle_state'])")
+
+            echo "  Status: $STATUS"
+
+            if [[ "$STATUS" == "TERMINATED" ]]; then
+              RESULT=$(curl -s "${{ inputs.workspace_url }}/api/2.1/jobs/runs/get?run_id=$run_id" \
+                -H "Authorization: Bearer $DATABRICKS_TOKEN" | \
+                python -c "import sys, json; data=json.load(sys.stdin); print(data['state'].get('result_state', 'UNKNOWN'))")
+
+              if [[ "$RESULT" == "SUCCESS" ]]; then
+                echo "  ✓ Run completed successfully"
+              else
+                echo "  ⚠ Run $RESULT (continuing anyway)"
+              fi
+              break
+            elif [[ "$STATUS" == "INTERNAL_ERROR" || "$STATUS" == "SKIPPED" ]]; then
+              echo "  ⚠ Run $STATUS (continuing anyway)"
+              break
+            fi
+
+            sleep 10
+          done
+        done
+
+        echo "✓ All jobs finished"
+
+    - name: Test Databricks Connection
+      env:
+        DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+      run: |
+        echo "Testing Databricks connection..."
+        python -c "
+        import os
+        from spark_optimizer.collectors.databricks_collector import DatabricksCollector
+
+        collector = DatabricksCollector(
+            workspace_url='${{ inputs.workspace_url }}',
+            token=os.environ['DATABRICKS_TOKEN']
+        )
+
+        print('✓ Databricks Collector initialized')
+        print(f'Workspace: ${{ inputs.workspace_url }}')
+
+        # Validate connection
+        if collector.validate_config():
+            print('✓ Databricks connection validated')
+        else:
+            print('✗ Connection validation failed')
+            exit(1)
+        "
+
+    - name: List Available Clusters
+      env:
+        DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+      run: |
+        echo "Listing available Databricks clusters..."
+        python -c "
+        import os
+        import requests
+
+        headers = {'Authorization': f'Bearer {os.environ[\"DATABRICKS_TOKEN\"]}'}
+        url = '${{ inputs.workspace_url }}/api/2.0/clusters/list'
+
+        response = requests.get(url, headers=headers)
+        if response.status_code == 200:
+            clusters = response.json().get('clusters', [])
+            print(f'Found {len(clusters)} clusters:')
+            for cluster in clusters[:5]:
+                print(f'  - {cluster.get(\"cluster_id\")}: {cluster.get(\"cluster_name\")} ({cluster.get(\"state\")})')
+        else:
+            print(f'Failed to list clusters: {response.status_code}')
+        "
+
+    - name: Test Data Collection
+      env:
+        DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+      run: |
+        echo "Collecting data from cluster: ${{ inputs.cluster_id }}"
+        python -c "
+        import os
+        from spark_optimizer.collectors.databricks_collector import DatabricksCollector
+
+        collector = DatabricksCollector(
+            workspace_url='${{ inputs.workspace_url }}',
+            token=os.environ['DATABRICKS_TOKEN'],
+            config={
+                'cluster_ids': ['${{ inputs.cluster_id }}'],
+                'max_jobs': int('${{ inputs.max_jobs }}')
+            }
+        )
+
+        jobs = collector.collect()
+        print(f'✓ Collected {len(jobs)} applications from cluster ${{ inputs.cluster_id }}')
+
+        if jobs:
+            for job in jobs[:5]:
+                print(f'\\n- {job.get(\"app_name\")}')
+                print(f'  ID: {job.get(\"app_id\")}')
+                print(f'  Executors: {job.get(\"num_executors\")}')
+                print(f'  Memory: {job.get(\"executor_memory_mb\")}MB')
+        else:
+            print('⚠ No applications found')
+        "
+
+    - name: Save to Database
+      env:
+        DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+      run: |
+        echo "Saving collected data to database..."
+        python -c "
+        import os
+        from spark_optimizer.collectors.databricks_collector import DatabricksCollector
+        from spark_optimizer.storage.database import Database
+
+        collector = DatabricksCollector(
+            workspace_url='${{ inputs.workspace_url }}',
+            token=os.environ['DATABRICKS_TOKEN'],
+            config={'max_jobs': int('${{ inputs.max_jobs }}')}
+        )
+
+        db = Database('sqlite:///spark_optimizer.db')
+        jobs = collector.collect()
+
+        saved = 0
+        errors = 0
+        for job in jobs:
+            try:
+                db.save_job(job)
+                saved += 1
+            except Exception as e:
+                errors += 1
+                if errors <= 3:
+                    print(f'Error: {e}')
+
+        print(f'✓ Saved {saved}/{len(jobs)} jobs to database')
+        if errors > 0:
+            print(f'⚠ {errors} jobs had errors')
+        "
+
+    - name: Verify Database
+      run: |
+        python -c "
+        from spark_optimizer.storage.database import Database
+        from spark_optimizer.storage.models import SparkApplication
+
+        db = Database('sqlite:///spark_optimizer.db')
+        with db.get_session() as session:
+            count = session.query(SparkApplication).count()
+            print(f'Total applications in database: {count}')
+
+            apps = session.query(SparkApplication).filter(
+                SparkApplication.cluster_type == 'databricks'
+            ).limit(5).all()
+
+            print(f'\\nDatabricks applications:')
+            for app in apps:
+                print(f'  - {app.app_name}')
+                print(f'    Executors: {app.num_executors}, Memory: {app.executor_memory_mb}MB')
+        "
+
+    - name: Generate Summary
+      if: always()
+      run: |
+        echo "## Databricks Integration Test Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Workspace:** ${{ inputs.workspace_url }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Max Jobs:** ${{ inputs.max_jobs }}" >> $GITHUB_STEP_SUMMARY
+        if [ -n "${{ inputs.cluster_id }}" ]; then
+          echo "**Cluster ID:** ${{ inputs.cluster_id }}" >> $GITHUB_STEP_SUMMARY
+        fi
+        echo "" >> $GITHUB_STEP_SUMMARY
+
+        if [ -f spark_optimizer.db ]; then
+          python -c "
+        from spark_optimizer.storage.database import Database
+        from spark_optimizer.storage.models import SparkApplication
+
+        db = Database('sqlite:///spark_optimizer.db')
+        with db.get_session() as session:
+            count = session.query(SparkApplication).filter(
+                SparkApplication.cluster_type == 'databricks'
+            ).count()
+            print(f'**Applications Collected:** {count}')
+        " >> $GITHUB_STEP_SUMMARY
+        fi
+
+    - name: Upload database artifact
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: databricks-test-database
+        path: spark_optimizer.db
+        retention-days: 7
