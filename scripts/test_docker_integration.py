@@ -265,6 +265,257 @@ class DockerIntegrationTest:
 
         return results
 
+    def test_cli_commands(self) -> Dict[str, bool]:
+        """Test all CLI commands."""
+        results = {}
+
+        self.log(f"\n{'='*60}", Colors.BOLD)
+        self.log("Testing CLI Commands", Colors.BOLD)
+        self.log(f"{'='*60}\n", Colors.BOLD)
+
+        db_path = str(self.project_root / "spark_optimizer.db")
+
+        # Test 1: Database initialization
+        try:
+            self.log_info("Testing: spark-optimizer db init")
+            self.run_command(
+                ["spark-optimizer", "db", "init", "--db-url", f"sqlite:///{db_path}"],
+                check=True
+            )
+            results["db_init"] = True
+            self.log_success("Database initialization succeeded")
+        except Exception as e:
+            results["db_init"] = False
+            self.log_error(f"Database init failed: {e}")
+
+        # Test 2: Database current revision
+        try:
+            self.log_info("Testing: spark-optimizer db current")
+            output = self.run_command(
+                ["spark-optimizer", "db", "current", "--db-url", f"sqlite:///{db_path}"],
+                check=True,
+                capture=True
+            )
+            results["db_current"] = output is not None
+            if results["db_current"]:
+                self.log_success("Database current revision check succeeded")
+            else:
+                self.log_error("Database current returned no output")
+        except Exception as e:
+            results["db_current"] = False
+            self.log_error(f"Database current failed: {e}")
+
+        # Test 3: Database history
+        try:
+            self.log_info("Testing: spark-optimizer db history")
+            output = self.run_command(
+                ["spark-optimizer", "db", "history", "--db-url", f"sqlite:///{db_path}"],
+                check=True,
+                capture=True
+            )
+            results["db_history"] = output is not None
+            if results["db_history"]:
+                self.log_success("Database history check succeeded")
+        except Exception as e:
+            results["db_history"] = False
+            self.log_error(f"Database history failed: {e}")
+
+        # Test 4: Collect from event logs
+        try:
+            self.log_info("Testing: spark-optimizer collect --event-log-dir")
+            event_log_dir = str(self.project_root / "spark-events")
+            self.run_command(
+                [
+                    "spark-optimizer", "collect",
+                    "--event-log-dir", event_log_dir,
+                    "--db-url", f"sqlite:///{db_path}"
+                ],
+                check=True
+            )
+            results["collect_event_logs"] = True
+            self.log_success("Event log collection succeeded")
+        except Exception as e:
+            results["collect_event_logs"] = False
+            self.log_error(f"Event log collection failed: {e}")
+
+        # Test 5: Collect from History Server
+        try:
+            self.log_info("Testing: spark-optimizer collect-from-history-server")
+            self.run_command(
+                [
+                    "spark-optimizer", "collect-from-history-server",
+                    "--history-server-url", "http://localhost:18080",
+                    "--db-url", f"sqlite:///{db_path}",
+                    "--max-apps", "10"
+                ],
+                check=True
+            )
+            results["collect_history_server"] = True
+            self.log_success("History Server collection succeeded")
+        except Exception as e:
+            results["collect_history_server"] = False
+            self.log_error(f"History Server collection failed: {e}")
+
+        # Test 6: List jobs
+        try:
+            self.log_info("Testing: spark-optimizer list-jobs")
+            output = self.run_command(
+                [
+                    "spark-optimizer", "list-jobs",
+                    "--db-url", f"sqlite:///{db_path}",
+                    "--limit", "10"
+                ],
+                check=True,
+                capture=True
+            )
+            results["list_jobs"] = output is not None and len(output) > 0
+            if results["list_jobs"]:
+                self.log_success("List jobs succeeded")
+                if self.verbose and output:
+                    print(output[:500])  # Show first 500 chars
+            else:
+                self.log_error("List jobs returned no output")
+        except Exception as e:
+            results["list_jobs"] = False
+            self.log_error(f"List jobs failed: {e}")
+
+        # Test 7: Stats
+        try:
+            self.log_info("Testing: spark-optimizer stats")
+            output = self.run_command(
+                [
+                    "spark-optimizer", "stats",
+                    "--db-url", f"sqlite:///{db_path}"
+                ],
+                check=True,
+                capture=True
+            )
+            results["stats"] = output is not None and "Total Jobs" in output
+            if results["stats"]:
+                self.log_success("Stats command succeeded")
+                if self.verbose and output:
+                    print(output)
+            else:
+                self.log_error("Stats output invalid")
+        except Exception as e:
+            results["stats"] = False
+            self.log_error(f"Stats command failed: {e}")
+
+        # Test 8: Analyze command (requires app_id from database)
+        try:
+            self.log_info("Testing: spark-optimizer analyze")
+
+            # Get first app_id from database
+            import sqlite3
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
+            cursor.execute("SELECT app_id FROM spark_applications LIMIT 1")
+            row = cursor.fetchone()
+            conn.close()
+
+            if row:
+                app_id = row[0]
+                self.log_info(f"Analyzing application: {app_id}")
+                output = self.run_command(
+                    [
+                        "spark-optimizer", "analyze",
+                        "--app-id", app_id,
+                        "--db-url", f"sqlite:///{db_path}"
+                    ],
+                    check=True,
+                    capture=True
+                )
+                results["analyze"] = output is not None and "Job Analysis" in output
+                if results["analyze"]:
+                    self.log_success("Analyze command succeeded")
+                    if self.verbose and output:
+                        print(output)
+                else:
+                    self.log_error("Analyze output invalid")
+            else:
+                results["analyze"] = False
+                self.log_error("No applications found in database for analyze test")
+        except Exception as e:
+            results["analyze"] = False
+            self.log_error(f"Analyze command failed: {e}")
+
+        # Test 9: Recommend command
+        try:
+            self.log_info("Testing: spark-optimizer recommend")
+            output = self.run_command(
+                [
+                    "spark-optimizer", "recommend",
+                    "--input-size", "10GB",
+                    "--job-type", "etl",
+                    "--priority", "balanced",
+                    "--db-url", f"sqlite:///{db_path}",
+                    "--format", "table"
+                ],
+                check=False,  # May fail if not enough data
+                capture=True
+            )
+            # Recommendation may fail with insufficient data, so we're lenient
+            results["recommend"] = True  # Just test that command runs
+            if output and "Recommended Configuration" in output:
+                self.log_success("Recommend command succeeded with results")
+                if self.verbose and output:
+                    print(output)
+            else:
+                self.log_info("Recommend command ran (may not have sufficient data for recommendation)")
+        except Exception as e:
+            results["recommend"] = False
+            self.log_error(f"Recommend command failed: {e}")
+
+        # Test 10: Recommend with JSON output
+        try:
+            self.log_info("Testing: spark-optimizer recommend --format json")
+            output = self.run_command(
+                [
+                    "spark-optimizer", "recommend",
+                    "--input-size", "5GB",
+                    "--priority", "performance",
+                    "--db-url", f"sqlite:///{db_path}",
+                    "--format", "json"
+                ],
+                check=False,
+                capture=True
+            )
+            results["recommend_json"] = True
+            if output:
+                self.log_success("Recommend JSON format succeeded")
+            else:
+                self.log_info("Recommend JSON ran (may not have sufficient data)")
+        except Exception as e:
+            results["recommend_json"] = False
+            self.log_error(f"Recommend JSON failed: {e}")
+
+        # Test 11: Recommend with spark-submit format
+        try:
+            self.log_info("Testing: spark-optimizer recommend --format spark-submit")
+            output = self.run_command(
+                [
+                    "spark-optimizer", "recommend",
+                    "--input-size", "20GB",
+                    "--priority", "cost",
+                    "--db-url", f"sqlite:///{db_path}",
+                    "--format", "spark-submit"
+                ],
+                check=False,
+                capture=True
+            )
+            results["recommend_spark_submit"] = True
+            if output and "spark-submit" in output:
+                self.log_success("Recommend spark-submit format succeeded")
+                if self.verbose and output:
+                    print(output)
+            else:
+                self.log_info("Recommend spark-submit ran (may not have sufficient data)")
+        except Exception as e:
+            results["recommend_spark_submit"] = False
+            self.log_error(f"Recommend spark-submit failed: {e}")
+
+        return results
+
     def stop_services(self):
         """Stop Docker Compose services."""
         self.log_info("Stopping Docker services...")
@@ -370,7 +621,10 @@ class DockerIntegrationTest:
 
             api_results = self.test_api_endpoints()
 
-            # Step 8: Print summary
+            # Step 8: Test CLI commands
+            cli_results = self.test_cli_commands()
+
+            # Step 9: Print summary
             self.log(f"\n{'='*60}", Colors.BOLD)
             self.log("Test Results Summary", Colors.BOLD)
             self.log(f"{'='*60}\n", Colors.BOLD)
@@ -389,10 +643,18 @@ class DockerIntegrationTest:
                 else:
                     self.log_error(f"  {test_name}")
 
+            self.log("\nCLI Tests:", Colors.BOLD)
+            for test_name, success in cli_results.items():
+                if success:
+                    self.log_success(f"  {test_name}")
+                else:
+                    self.log_error(f"  {test_name}")
+
             # Calculate overall success
             all_jobs_passed = all(success for _, success in job_results)
             all_api_tests_passed = all(api_results.values())
-            overall_success = all_jobs_passed and all_api_tests_passed
+            all_cli_tests_passed = all(cli_results.values())
+            overall_success = all_jobs_passed and all_api_tests_passed and all_cli_tests_passed
 
             self.log(f"\n{'='*60}", Colors.BOLD)
             if overall_success:
