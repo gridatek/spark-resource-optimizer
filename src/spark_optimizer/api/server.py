@@ -24,6 +24,7 @@ from spark_optimizer.api.monitoring_routes import (
 )
 from spark_optimizer.api.tuning_routes import tuning_bp, init_tuning
 from spark_optimizer.api.cost_routes import cost_bp, init_cost_modeling
+from spark_optimizer.api.metrics_routes import metrics_bp
 
 # Import authentication
 from spark_optimizer.auth.routes import auth_bp
@@ -82,6 +83,9 @@ def init_app(
         app.register_blueprint(monitoring_bp, url_prefix="/api/v1")
         app.register_blueprint(tuning_bp, url_prefix="/api/v1")
         app.register_blueprint(cost_bp, url_prefix="/api/v1")
+
+        # Register Prometheus metrics endpoint (at root level)
+        app.register_blueprint(metrics_bp)
 
         # Register authentication blueprint
         if enable_auth:

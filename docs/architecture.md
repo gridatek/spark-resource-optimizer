@@ -55,7 +55,7 @@ The Spark Resource Optimizer is designed with a modular, layered architecture th
 ┌─────────────────────────────────────────────────────────────┐
 │                   Data Collection Layer                     │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐       │
-│  │  Event Log   │  │   History    │  │   Metrics    │       │
+│  │  Event Log   │  │   History    │  │  Cloud APIs  │       │
 │  │  Collector   │  │    Server    │  │  Collector   │       │
 │  └──────────────┘  └──────────────┘  └──────────────┘       │
 └─────────────────────────────────────────────────────────────┘
@@ -64,8 +64,8 @@ The Spark Resource Optimizer is designed with a modular, layered architecture th
 ┌─────────────────────────────────────────────────────────────┐
 │                      Data Sources                           │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐       │
-│  │ Spark Event  │  │    Spark     │  │  Prometheus  │       │
-│  │    Logs      │  │   History    │  │   /Grafana   │       │
+│  │ Spark Event  │  │    Spark     │  │  Cloud APIs  │       │
+│  │    Logs      │  │   History    │  │              │       │
 │  └──────────────┘  └──────────────┘  └──────────────┘       │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -80,7 +80,7 @@ The Spark Resource Optimizer is designed with a modular, layered architecture th
 - `BaseCollector`: Abstract interface for all collectors
 - `EventLogCollector`: Parse Spark event log files
 - `HistoryServerCollector`: Query Spark History Server API
-- `MetricsCollector`: Integrate with monitoring systems
+- Cloud API Collectors: EMR, Databricks, Dataproc integrations
 
 **Key Features**:
 - Pluggable collector architecture

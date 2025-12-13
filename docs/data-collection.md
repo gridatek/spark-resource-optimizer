@@ -78,43 +78,43 @@ collector = HistoryServerCollector("http://spark-history:18080")
 jobs_data = collector.collect()
 ```
 
-### 3. Metrics Systems
+### 3. Cloud Provider APIs
 
-**Description**: Integrate with monitoring systems (Prometheus, Grafana, etc.)
+**Description**: Integrate with cloud provider APIs (AWS EMR, Databricks, GCP Dataproc)
 
 **Use Cases**:
-- Existing monitoring infrastructure
-- Real-time metrics streaming
-- Cross-platform metric aggregation
+- Cloud-native Spark deployments
+- Multi-cloud environments
+- Managed Spark services
 
 **Advantages**:
-- Unified monitoring approach
-- Historical time-series data
-- Alerting integration
+- Direct access to cluster metadata
+- Cost information integration
+- Cloud-specific optimizations
+- Automatic discovery of jobs
 
 **Limitations**:
-- Requires metrics export configuration
-- May need custom metric definitions
-- Additional infrastructure complexity
+- Requires cloud provider credentials
+- API rate limits may apply
+- Different APIs per provider
 
-**Configuration**:
-```yaml
-collector:
-  type: metrics
-  metrics_endpoint: http://prometheus:9090
-  query_range: 7d
-  metric_names:
-    - spark_executor_memory_used
-    - spark_executor_cpu_time
-```
+**Supported Providers**:
+- **AWS EMR**: Uses boto3 to query EMR clusters and CloudWatch metrics
+- **Databricks**: Integrates with Databricks REST API
+- **GCP Dataproc**: Uses Google Cloud APIs for cluster and job data
 
 **Example Usage**:
 ```python
-from spark_optimizer.collectors.metrics_collector import MetricsCollector
+from spark_optimizer.collectors.emr_collector import EMRCollector
 
-collector = MetricsCollector("http://prometheus:9090")
+collector = EMRCollector(region="us-west-2")
 jobs_data = collector.collect()
 ```
+
+For detailed cloud integration guides, see:
+- [AWS EMR Integration](AWS_EMR_INTEGRATION.md)
+- [Databricks Integration](DATABRICKS_INTEGRATION.md)
+- [GCP Dataproc Integration](GCP_DATAPROC_INTEGRATION.md)
 
 ## Collected Metrics
 
