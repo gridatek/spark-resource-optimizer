@@ -53,6 +53,9 @@ spark-optimizer collect --event-log-dir /path/to/spark/logs
 # Collect data from Spark History Server
 spark-optimizer collect-from-history-server --history-server-url http://localhost:18080
 
+# Collect data from Prometheus/Grafana metrics
+spark-optimizer collect-from-metrics --metrics-endpoint http://localhost:9090
+
 # Collect data from AWS EMR
 pip install -e ".[aws]"
 spark-optimizer collect-from-emr --region us-west-2

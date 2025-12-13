@@ -13,6 +13,7 @@ from typing import Optional
 # Import our modules (adjust imports based on your package structure)
 from spark_optimizer.collectors.event_log_collector import EventLogCollector
 from spark_optimizer.collectors.history_server_collector import HistoryServerCollector
+from spark_optimizer.collectors.metrics_collector import MetricsCollector
 from spark_optimizer.storage.database import Database
 from spark_optimizer.recommender.similarity_recommender import SimilarityRecommender
 
@@ -168,6 +169,116 @@ def collect_from_history_server(
 
     except Exception as e:
         click.echo(f"✗ Error collecting from History Server: {e}", err=True)
+        sys.exit(1)
+
+
+@cli.command(name="collect-from-metrics")
+@click.option(
+    "--metrics-endpoint",
+    required=True,
+    help="URL of Prometheus/metrics endpoint (e.g., http://localhost:9090)",
+)
+@click.option(
+    "--db-url",
+    default="sqlite:///spark_optimizer.db",
+    help="Database URL (default: sqlite:///spark_optimizer.db)",
+)
+@click.option(
+    "--lookback-hours",
+    default=24,
+    type=int,
+    help="Hours to look back for metrics (default: 24)",
+)
+@click.option(
+    "--timeout",
+    default=30,
+    type=int,
+    help="Request timeout in seconds (default: 30)",
+)
+@click.option(
+    "--step",
+    default="1m",
+    help="Query step interval (default: 1m)",
+)
+@click.option(
+    "--no-verify-ssl",
+    is_flag=True,
+    help="Disable SSL certificate verification",
+)
+def collect_from_metrics(
+    metrics_endpoint: str,
+    db_url: str,
+    lookback_hours: int,
+    timeout: int,
+    step: str,
+    no_verify_ssl: bool,
+):
+    """Collect metrics from Prometheus or other metrics systems"""
+
+    click.echo(f"Connecting to metrics endpoint: {metrics_endpoint}")
+
+    # Initialize collector
+    config = {
+        "lookback_hours": lookback_hours,
+        "timeout": timeout,
+        "step": step,
+        "verify_ssl": not no_verify_ssl,
+    }
+
+    collector = MetricsCollector(metrics_endpoint, config=config)
+
+    # Validate connection
+    if not collector.validate_config():
+        click.echo(
+            "✗ Failed to connect to metrics endpoint. Please check the URL and connectivity.",
+            err=True,
+        )
+        sys.exit(1)
+
+    click.echo("✓ Successfully connected to metrics endpoint")
+
+    # Initialize database
+    db = Database(db_url)
+
+    # Collect metrics
+    click.echo(
+        f"Collecting metrics from the last {lookback_hours} hours with step={step}..."
+    )
+
+    try:
+        job_data = collector.collect()
+
+        if not job_data:
+            click.echo("No job metrics found")
+            return
+
+        click.echo(f"Retrieved metrics for {len(job_data)} jobs")
+
+        # Save to database
+        processed = 0
+        errors = 0
+
+        with click.progressbar(
+            job_data, label="Saving to database", show_pos=True
+        ) as bar:
+            for job in bar:
+                try:
+                    db.save_job(job)
+                    processed += 1
+                except Exception as e:
+                    errors += 1
+                    if errors <= 5:  # Only show first 5 errors
+                        click.echo(
+                            f"\nError saving job {job.get('app_id', 'unknown')}: {e}",
+                            err=True,
+                        )
+
+        click.echo(f"\n✓ Successfully processed {processed} jobs")
+        if errors > 0:
+            click.echo(f"✗ Failed to process {errors} jobs", err=True)
+
+    except Exception as e:
+        click.echo(f"✗ Error collecting metrics: {e}", err=True)
         sys.exit(1)
 
 
