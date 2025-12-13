@@ -11,6 +11,49 @@ The EMR collector enables you to:
 - 🎯 Get EMR-specific instance type recommendations
 - ⚡ Optimize resource configurations for production EMR workloads
 
+## Free Testing Options
+
+### AWS Free Tier & Cost Optimization
+
+**Important:** AWS EMR is **not included** in the AWS Free Tier. However, you can minimize costs:
+
+#### Option 1: AWS Free Trial (New Accounts)
+- New AWS accounts may receive promotional credits
+- Check AWS Activate or AWS Educate programs for credits
+
+#### Option 2: Minimal Cost Testing
+To keep costs under **$0.50 for testing**:
+
+1. **Use smallest instance types:**
+   ```bash
+   # Example cluster configuration
+   Instance Type: m5.xlarge (master + 2 core nodes)
+   Estimated cost: ~$0.72/hour
+   ```
+
+2. **Test quickly and terminate:**
+   - Run the integration test (~20-30 minutes)
+   - Terminate cluster immediately after
+   - Total cost: **~$0.30-0.50**
+
+3. **Use spot instances (up to 90% cheaper):**
+   - Enable spot instances for core and task nodes
+   - Not recommended for production, but great for testing
+
+4. **Clean up immediately:**
+   ```bash
+   # Terminate cluster after testing
+   aws emr terminate-clusters --cluster-ids j-XXXXXXXXXXXXX
+   ```
+
+#### Option 3: Test with Existing Clusters
+If you already have EMR clusters running:
+- Set `submit_jobs: false` in the GitHub Actions workflow
+- Test data collection from existing jobs
+- No additional cost
+
+**Cost Calculator:** https://calculator.aws/#/addService/EMR
+
 ## Prerequisites
 
 ### 1. Install boto3

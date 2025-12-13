@@ -13,6 +13,81 @@ The Databricks collector enables you to:
 - 🎯 Get Databricks-specific cluster type recommendations
 - ⚡ Optimize resource configurations for production workloads
 
+## Free Testing Options
+
+### Databricks Free Trial & Community Edition
+
+#### Option 1: Databricks Free Trial (Recommended for Testing)
+Get **14 days of free access** to a full Databricks workspace:
+
+**AWS Databricks:**
+1. Visit: https://databricks.com/try-databricks
+2. Sign up for free trial
+3. Get $200 in credits or 14-day trial
+4. Full API access for testing the integration
+
+**Azure Databricks:**
+1. Visit: https://azure.microsoft.com/free/
+2. Get $200 Azure credits (30 days)
+3. Create Databricks workspace
+4. Test with free credits
+
+**GCP Databricks:**
+1. Visit: https://cloud.google.com/free
+2. Get $300 GCP credits (90 days)
+3. Create Databricks workspace
+4. Test with free credits
+
+#### Option 2: Databricks Community Edition (Limited)
+**Free forever, but with limitations:**
+- **Cannot use API** (required for this integration)
+- No custom clusters
+- Single-node cluster only
+- ⚠️ **Not suitable for testing this integration workflow**
+
+#### Option 3: Minimal Cost Testing
+To keep costs under **$0.50 for testing**:
+
+1. **Use smallest cluster:**
+   ```python
+   # Example: Azure
+   Cluster Type: Standard_DS3_v2 (4 cores, 14 GB)
+   Cost: ~$0.19/hr (VM) + ~$0.30/hr (DBU) = ~$0.49/hr
+
+   # Example: AWS
+   Cluster Type: i3.xlarge (4 cores, 30.5 GB)
+   Cost: ~$0.31/hr (EC2) + ~$0.23/hr (DBU) = ~$0.54/hr
+   ```
+
+2. **Test quickly and terminate:**
+   - Run the integration test (~20-30 minutes)
+   - Terminate cluster immediately after
+   - Total cost: **~$0.25-0.50**
+
+3. **Use cluster policies for auto-termination:**
+   ```json
+   {
+     "autotermination_minutes": {
+       "type": "fixed",
+       "value": 30
+     }
+   }
+   ```
+
+4. **Clean up immediately:**
+   ```bash
+   # Terminate cluster via UI or CLI
+   databricks clusters delete --cluster-id YOUR_CLUSTER_ID
+   ```
+
+#### Option 4: Test with Existing Clusters
+If you already have Databricks clusters running:
+- Set `submit_jobs: false` in the GitHub Actions workflow
+- Test data collection from existing job runs
+- No additional cost
+
+**Pricing Calculator:** https://databricks.com/product/pricing
+
 ## Prerequisites
 
 ### 1. Install requests library
