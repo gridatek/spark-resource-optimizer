@@ -273,6 +273,60 @@ def collect_from_databricks():
     })
 ```
 
+## Testing Integration with GitHub Actions
+
+The project includes a manual GitHub Actions workflow to test Databricks integration with real data.
+
+### Running the Integration Test
+
+1. **Navigate to Actions** in your GitHub repository
+2. **Select "Databricks Integration Test"** workflow
+3. **Click "Run workflow"** and provide:
+   - **Workspace URL**: Your Databricks workspace URL (e.g., `https://dbc-xxx.cloud.databricks.com`)
+   - **Cluster ID**: Your Databricks cluster ID (e.g., `0123-456789-abc123`)
+   - **DBFS Path**: Path for uploading jobs (default: `/FileStore/spark-jobs`)
+   - **Max Jobs**: Maximum jobs to collect (default: 10)
+   - **Submit Jobs**: Whether to submit sample jobs (default: true)
+
+### Required GitHub Secrets
+
+Configure this secret in your repository settings:
+
+- `DATABRICKS_TOKEN`: Your Databricks personal access token
+
+### What the Workflow Does
+
+1. **Uploads Sample Jobs** - Uploads Spark jobs from `spark-jobs/` to DBFS
+2. **Submits Jobs** - Runs 3 sample Spark applications via Jobs API:
+   - Simple WordCount
+   - Inefficient Job (demonstrates optimization opportunities)
+   - Memory Intensive Job
+3. **Waits for Completion** - Monitors run status until finished
+4. **Collects Data** - Uses DatabricksCollector to gather metrics
+5. **Saves to Database** - Stores results in SQLite
+6. **Uploads Artifact** - Database file available for download
+
+### Example Output
+
+```
+✓ Jobs uploaded to DBFS:/FileStore/spark-jobs
+✓ Submitted Simple WordCount: Run ID 123
+✓ Submitted Inefficient Job: Run ID 456
+✓ Submitted Memory Intensive Job: Run ID 789
+✓ All jobs finished
+✓ Collected 3 applications from cluster 0123-456789-abc123
+✓ Saved 3/3 jobs to database
+Total applications in database: 3
+```
+
+### Using Without Job Submission
+
+To test data collection from existing jobs without submitting new ones:
+
+1. Set **Submit Jobs** to `false`
+2. Provide existing **Cluster ID** with completed runs
+3. Workflow will only collect and analyze existing data
+
 ## Automated Collection
 
 ### Using Cron

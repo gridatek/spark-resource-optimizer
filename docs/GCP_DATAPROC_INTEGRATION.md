@@ -320,6 +320,61 @@ def collect_from_dataproc():
     })
 ```
 
+## Testing Integration with GitHub Actions
+
+The project includes a manual GitHub Actions workflow to test Dataproc integration with real data.
+
+### Running the Integration Test
+
+1. **Navigate to Actions** in your GitHub repository
+2. **Select "GCP Dataproc Integration Test"** workflow
+3. **Click "Run workflow"** and provide:
+   - **Project ID**: Your GCP project ID
+   - **Region**: Your Dataproc region (e.g., `us-central1`)
+   - **Cluster Name**: Your Dataproc cluster name (e.g., `my-cluster`)
+   - **GCS Bucket**: Bucket for uploading jobs (e.g., `my-dataproc-bucket`)
+   - **Max Clusters**: Maximum clusters to collect from (default: 5)
+   - **Submit Jobs**: Whether to submit sample jobs (default: true)
+
+### Required GitHub Secrets
+
+Configure this secret in your repository settings:
+
+- `GCP_CREDENTIALS`: Your GCP service account JSON key (base64 encoded or raw JSON)
+
+### What the Workflow Does
+
+1. **Uploads Sample Jobs** - Uploads Spark jobs from `spark-jobs/` to GCS
+2. **Submits Jobs** - Runs 3 sample Spark applications via `gcloud dataproc jobs submit`:
+   - Simple WordCount
+   - Inefficient Job (demonstrates optimization opportunities)
+   - Memory Intensive Job
+3. **Waits for Completion** - Monitors job status until finished
+4. **Collects Data** - Uses DataprocCollector to gather metrics
+5. **Saves to Database** - Stores results in SQLite
+6. **Uploads Artifact** - Database file available for download
+
+### Example Output
+
+```
+✓ Jobs uploaded to gs://my-bucket/spark-jobs/
+✓ Submitted Simple WordCount: job-abc123
+✓ Submitted Inefficient Job: job-def456
+✓ Submitted Memory Intensive Job: job-ghi789
+✓ All jobs finished
+✓ Collected data for 3 applications from cluster my-cluster
+✓ Saved 3/3 jobs to database
+Total applications in database: 3
+```
+
+### Using Without Job Submission
+
+To test data collection from existing jobs without submitting new ones:
+
+1. Set **Submit Jobs** to `false`
+2. Provide existing **Cluster Name** with completed jobs
+3. Workflow will only collect and analyze existing data
+
 ## Automated Collection
 
 ### Using Cron

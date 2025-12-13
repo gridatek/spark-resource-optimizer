@@ -273,6 +273,61 @@ def collect_from_emr():
     })
 ```
 
+## Testing Integration with GitHub Actions
+
+The project includes a manual GitHub Actions workflow to test EMR integration with real data.
+
+### Running the Integration Test
+
+1. **Navigate to Actions** in your GitHub repository
+2. **Select "AWS EMR Integration Test"** workflow
+3. **Click "Run workflow"** and provide:
+   - **AWS Region**: Your EMR cluster region (e.g., `us-west-2`)
+   - **Cluster ID**: Your EMR cluster ID (e.g., `j-1234567890ABC`)
+   - **S3 Bucket**: Bucket for uploading Spark jobs (e.g., `my-emr-bucket`)
+   - **Max Clusters**: Maximum clusters to collect from (default: 5)
+   - **Submit Jobs**: Whether to submit sample jobs (default: true)
+
+### Required GitHub Secrets
+
+Configure these secrets in your repository settings:
+
+- `AWS_ACCESS_KEY_ID`: Your AWS access key
+- `AWS_SECRET_ACCESS_KEY`: Your AWS secret access key
+
+### What the Workflow Does
+
+1. **Uploads Sample Jobs** - Uploads Spark jobs from `spark-jobs/` to S3
+2. **Submits Jobs** - Runs 3 sample Spark applications:
+   - Simple WordCount
+   - Inefficient Job (demonstrates optimization opportunities)
+   - Memory Intensive Job
+3. **Waits for Completion** - Monitors job status until finished
+4. **Collects Data** - Uses EMRCollector to gather metrics
+5. **Saves to Database** - Stores results in SQLite
+6. **Uploads Artifact** - Database file available for download
+
+### Example Output
+
+```
+✓ Jobs uploaded to s3://my-bucket/spark-jobs/
+✓ Submitted Simple WordCount: s-ABC123
+✓ Submitted Inefficient Job: s-DEF456
+✓ Submitted Memory Intensive Job: s-GHI789
+✓ All jobs finished
+✓ Collected data for 3 applications
+✓ Saved 3/3 jobs to database
+Total applications in database: 3
+```
+
+### Using Without Job Submission
+
+To test data collection from existing jobs without submitting new ones:
+
+1. Set **Submit Jobs** to `false`
+2. Provide existing **Cluster ID** with completed jobs
+3. Workflow will only collect and analyze existing data
+
 ## Automated Collection
 
 ### Using Cron
