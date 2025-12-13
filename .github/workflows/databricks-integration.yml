@@ -7,12 +7,20 @@ on:
         description: 'Databricks Workspace URL (e.g., https://dbc-xxx.cloud.databricks.com)'
         required: true
       cluster_id:
-        description: 'Cluster ID (optional - will list all if not provided)'
+        description: 'Databricks Cluster ID (required for job submission)'
+        required: true
+      dbfs_path:
+        description: 'DBFS path for uploading jobs (e.g., /FileStore/spark-jobs)'
         required: false
+        default: '/FileStore/spark-jobs'
       max_jobs:
         description: 'Maximum jobs to collect'
         required: false
         default: '10'
+      submit_jobs:
+        description: 'Submit sample Spark jobs to generate data'
+        required: false
+        default: 'true'
 
 jobs:
   test-databricks-integration:
@@ -46,6 +54,114 @@ jobs:
       run: |
         python scripts/setup_db.py
         ls -la *.db
+
+    - name: Upload Spark Jobs to DBFS
+      if: ${{ inputs.submit_jobs == 'true' }}
+      env:
+        DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+      run: |
+        echo "Uploading Spark jobs to DBFS..."
+
+        for job_file in spark-jobs/*.py; do
+          if [ "$job_file" == "spark-jobs/*.py" ]; then continue; fi
+
+          job_name=$(basename "$job_file")
+          echo "Uploading $job_name..."
+
+          # Read file content and base64 encode
+          content=$(base64 -w 0 "$job_file")
+
+          # Upload to DBFS
+          curl -X POST "${{ inputs.workspace_url }}/api/2.0/dbfs/put" \
+            -H "Authorization: Bearer $DATABRICKS_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"path\": \"${{ inputs.dbfs_path }}/$job_name\",
+              \"contents\": \"$content\",
+              \"overwrite\": true
+            }"
+          echo ""
+        done
+
+        echo "✓ Jobs uploaded to DBFS:${{ inputs.dbfs_path }}"
+
+    - name: Submit Sample Spark Jobs to Databricks
+      if: ${{ inputs.submit_jobs == 'true' }}
+      env:
+        DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+      run: |
+        echo "Submitting Spark jobs to Databricks cluster ${{ inputs.cluster_id }}..."
+
+        # Function to submit a job
+        submit_job() {
+          local job_name=$1
+          local job_path=$2
+
+          run_id=$(curl -X POST "${{ inputs.workspace_url }}/api/2.1/jobs/runs/submit" \
+            -H "Authorization: Bearer $DATABRICKS_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"run_name\": \"$job_name\",
+              \"existing_cluster_id\": \"${{ inputs.cluster_id }}\",
+              \"spark_python_task\": {
+                \"python_file\": \"dbfs:$job_path\"
+              }
+            }" | python -c "import sys, json; print(json.load(sys.stdin)['run_id'])")
+
+          echo "$run_id"
+        }
+
+        # Submit jobs
+        RUN_ID_1=$(submit_job "Simple WordCount" "${{ inputs.dbfs_path }}/simple_wordcount.py")
+        echo "✓ Submitted Simple WordCount: Run ID $RUN_ID_1"
+
+        RUN_ID_2=$(submit_job "Inefficient Job" "${{ inputs.dbfs_path }}/inefficient_job.py")
+        echo "✓ Submitted Inefficient Job: Run ID $RUN_ID_2"
+
+        RUN_ID_3=$(submit_job "Memory Intensive Job" "${{ inputs.dbfs_path }}/memory_intensive_job.py")
+        echo "✓ Submitted Memory Intensive Job: Run ID $RUN_ID_3"
+
+        echo "RUN_IDS=$RUN_ID_1,$RUN_ID_2,$RUN_ID_3" >> $GITHUB_ENV
+
+    - name: Wait for Jobs to Complete
+      if: ${{ inputs.submit_jobs == 'true' }}
+      env:
+        DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+      run: |
+        echo "Waiting for Spark jobs to complete..."
+        IFS=',' read -ra RUNS <<< "$RUN_IDS"
+
+        for run_id in "${RUNS[@]}"; do
+          echo "Waiting for run: $run_id"
+
+          while true; do
+            STATUS=$(curl -s "${{ inputs.workspace_url }}/api/2.1/jobs/runs/get?run_id=$run_id" \
+              -H "Authorization: Bearer $DATABRICKS_TOKEN" | \
+              python -c "import sys, json; data=json.load(sys.stdin); print(data['state']['life_cycle_state'])")
+
+            echo "  Status: $STATUS"
+
+            if [[ "$STATUS" == "TERMINATED" ]]; then
+              RESULT=$(curl -s "${{ inputs.workspace_url }}/api/2.1/jobs/runs/get?run_id=$run_id" \
+                -H "Authorization: Bearer $DATABRICKS_TOKEN" | \
+                python -c "import sys, json; data=json.load(sys.stdin); print(data['state'].get('result_state', 'UNKNOWN'))")
+
+              if [[ "$RESULT" == "SUCCESS" ]]; then
+                echo "  ✓ Run completed successfully"
+              else
+                echo "  ⚠ Run $RESULT (continuing anyway)"
+              fi
+              break
+            elif [[ "$STATUS" == "INTERNAL_ERROR" || "$STATUS" == "SKIPPED" ]]; then
+              echo "  ⚠ Run $STATUS (continuing anyway)"
+              break
+            fi
+
+            sleep 10
+          done
+        done
+
+        echo "✓ All jobs finished"
 
     - name: Test Databricks Connection
       env:
@@ -94,42 +210,7 @@ jobs:
             print(f'Failed to list clusters: {response.status_code}')
         "
 
-    - name: Test Data Collection (All Jobs)
-      if: ${{ !inputs.cluster_id }}
-      env:
-        DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
-      run: |
-        echo "Collecting job data from Databricks..."
-        python -c "
-        import os
-        from spark_optimizer.collectors.databricks_collector import DatabricksCollector
-
-        collector = DatabricksCollector(
-            workspace_url='${{ inputs.workspace_url }}',
-            token=os.environ['DATABRICKS_TOKEN'],
-            config={
-                'max_jobs': int('${{ inputs.max_jobs }}'),
-                'collect_costs': True
-            }
-        )
-
-        print('Starting data collection...')
-        jobs = collector.collect()
-        print(f'✓ Collected data for {len(jobs)} applications')
-
-        if jobs:
-            print('\\nSample applications:')
-            for i, job in enumerate(jobs[:3]):
-                print(f'\\n{i+1}. {job.get(\"app_name\")}')
-                print(f'   App ID: {job.get(\"app_id\")}')
-                print(f'   Status: {job.get(\"status\")}')
-                print(f'   Duration: {job.get(\"duration_ms\")}ms')
-        else:
-            print('⚠ No jobs found')
-        "
-
-    - name: Test Data Collection (Specific Cluster)
-      if: ${{ inputs.cluster_id }}
+    - name: Test Data Collection
       env:
         DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
       run: |
@@ -150,11 +231,14 @@ jobs:
         jobs = collector.collect()
         print(f'✓ Collected {len(jobs)} applications from cluster ${{ inputs.cluster_id }}')
 
-        for job in jobs[:5]:
-            print(f'\\n- {job.get(\"app_name\")}')
-            print(f'  ID: {job.get(\"app_id\")}')
-            print(f'  Executors: {job.get(\"num_executors\")}')
-            print(f'  Memory: {job.get(\"executor_memory_mb\")}MB')
+        if jobs:
+            for job in jobs[:5]:
+                print(f'\\n- {job.get(\"app_name\")}')
+                print(f'  ID: {job.get(\"app_id\")}')
+                print(f'  Executors: {job.get(\"num_executors\")}')
+                print(f'  Memory: {job.get(\"executor_memory_mb\")}MB')
+        else:
+            print('⚠ No applications found')
         "
 
     - name: Save to Database

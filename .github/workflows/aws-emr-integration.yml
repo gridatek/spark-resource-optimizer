@@ -8,12 +8,19 @@ on:
         required: true
         default: 'us-west-2'
       cluster_id:
-        description: 'EMR Cluster ID (optional - will list all if not provided)'
-        required: false
+        description: 'EMR Cluster ID (required for job submission)'
+        required: true
+      s3_bucket:
+        description: 'S3 bucket for uploading Spark jobs (e.g., my-emr-bucket)'
+        required: true
       max_clusters:
         description: 'Maximum clusters to collect from'
         required: false
         default: '5'
+      submit_jobs:
+        description: 'Submit sample Spark jobs to generate data'
+        required: false
+        default: 'true'
 
 jobs:
   test-emr-integration:
@@ -53,8 +60,78 @@ jobs:
         python scripts/setup_db.py
         ls -la *.db
 
+    - name: Upload Spark Jobs to S3
+      if: ${{ inputs.submit_jobs == 'true' }}
+      run: |
+        echo "Uploading Spark jobs to S3..."
+        aws s3 cp spark-jobs/ s3://${{ inputs.s3_bucket }}/spark-jobs/ --recursive --exclude "*.md"
+        echo "✓ Jobs uploaded to s3://${{ inputs.s3_bucket }}/spark-jobs/"
+
+    - name: Submit Sample Spark Jobs to EMR
+      if: ${{ inputs.submit_jobs == 'true' }}
+      run: |
+        echo "Submitting Spark jobs to EMR cluster ${{ inputs.cluster_id }}..."
+
+        # Submit simple wordcount job
+        STEP_ID_1=$(aws emr add-steps \
+          --cluster-id ${{ inputs.cluster_id }} \
+          --steps Type=Spark,Name="Simple WordCount",ActionOnFailure=CONTINUE,Args=[s3://${{ inputs.s3_bucket }}/spark-jobs/simple_wordcount.py] \
+          --region ${{ inputs.aws_region }} \
+          --query 'StepIds[0]' --output text)
+        echo "✓ Submitted Simple WordCount: $STEP_ID_1"
+
+        # Submit inefficient job
+        STEP_ID_2=$(aws emr add-steps \
+          --cluster-id ${{ inputs.cluster_id }} \
+          --steps Type=Spark,Name="Inefficient Job",ActionOnFailure=CONTINUE,Args=[s3://${{ inputs.s3_bucket }}/spark-jobs/inefficient_job.py] \
+          --region ${{ inputs.aws_region }} \
+          --query 'StepIds[0]' --output text)
+        echo "✓ Submitted Inefficient Job: $STEP_ID_2"
+
+        # Submit memory intensive job
+        STEP_ID_3=$(aws emr add-steps \
+          --cluster-id ${{ inputs.cluster_id }} \
+          --steps Type=Spark,Name="Memory Intensive Job",ActionOnFailure=CONTINUE,Args=[s3://${{ inputs.s3_bucket }}/spark-jobs/memory_intensive_job.py] \
+          --region ${{ inputs.aws_region }} \
+          --query 'StepIds[0]' --output text)
+        echo "✓ Submitted Memory Intensive Job: $STEP_ID_3"
+
+        echo "STEP_IDS=$STEP_ID_1,$STEP_ID_2,$STEP_ID_3" >> $GITHUB_ENV
+
+    - name: Wait for Jobs to Complete
+      if: ${{ inputs.submit_jobs == 'true' }}
+      run: |
+        echo "Waiting for Spark jobs to complete..."
+        IFS=',' read -ra STEPS <<< "$STEP_IDS"
+
+        for step_id in "${STEPS[@]}"; do
+          echo "Waiting for step: $step_id"
+
+          while true; do
+            STATUS=$(aws emr describe-step \
+              --cluster-id ${{ inputs.cluster_id }} \
+              --step-id "$step_id" \
+              --region ${{ inputs.aws_region }} \
+              --query 'Step.Status.State' --output text)
+
+            echo "  Status: $STATUS"
+
+            if [[ "$STATUS" == "COMPLETED" ]]; then
+              echo "  ✓ Step completed successfully"
+              break
+            elif [[ "$STATUS" == "FAILED" || "$STATUS" == "CANCELLED" ]]; then
+              echo "  ⚠ Step $STATUS (continuing anyway)"
+              break
+            fi
+
+            sleep 10
+          done
+        done
+
+        echo "✓ All jobs finished"
+
     - name: Test EMR Collector (List Clusters)
-      if: ${{ !inputs.cluster_id }}
+      if: ${{ !inputs.submit_jobs || inputs.submit_jobs == 'false' }}
       run: |
         echo "Testing EMR collector with cluster discovery..."
         python -c "
@@ -93,7 +170,6 @@ jobs:
         "
 
     - name: Test EMR Collector (Specific Cluster)
-      if: ${{ inputs.cluster_id }}
       run: |
         echo "Testing EMR collector with cluster ID: ${{ inputs.cluster_id }}"
         python -c "
@@ -119,6 +195,8 @@ jobs:
                 print(f'  App ID: {job.get(\"app_id\")}')
                 print(f'  Name: {job.get(\"app_name\")}')
                 print(f'  Duration: {job.get(\"duration_ms\")}ms')
+        else:
+            print('⚠ No applications found')
         "
 
     - name: Save to Database

@@ -11,12 +11,19 @@ on:
         required: true
         default: 'us-central1'
       cluster_name:
-        description: 'Cluster Name (optional - will list all if not provided)'
-        required: false
+        description: 'Dataproc Cluster Name (required for job submission)'
+        required: true
+      gcs_bucket:
+        description: 'GCS bucket for uploading jobs (e.g., my-dataproc-bucket)'
+        required: true
       max_clusters:
         description: 'Maximum clusters to collect from'
         required: false
         default: '5'
+      submit_jobs:
+        description: 'Submit sample Spark jobs to generate data'
+        required: false
+        default: 'true'
 
 jobs:
   test-dataproc-integration:
@@ -60,8 +67,80 @@ jobs:
         python scripts/setup_db.py
         ls -la *.db
 
+    - name: Upload Spark Jobs to GCS
+      if: ${{ inputs.submit_jobs == 'true' }}
+      run: |
+        echo "Uploading Spark jobs to GCS..."
+        gsutil -m cp spark-jobs/*.py gs://${{ inputs.gcs_bucket }}/spark-jobs/
+        echo "✓ Jobs uploaded to gs://${{ inputs.gcs_bucket }}/spark-jobs/"
+
+    - name: Submit Sample Spark Jobs to Dataproc
+      if: ${{ inputs.submit_jobs == 'true' }}
+      run: |
+        echo "Submitting Spark jobs to Dataproc cluster ${{ inputs.cluster_name }}..."
+
+        # Submit simple wordcount job
+        JOB_ID_1=$(gcloud dataproc jobs submit pyspark \
+          gs://${{ inputs.gcs_bucket }}/spark-jobs/simple_wordcount.py \
+          --cluster=${{ inputs.cluster_name }} \
+          --region=${{ inputs.region }} \
+          --project=${{ inputs.project_id }} \
+          --format="value(reference.jobId)")
+        echo "✓ Submitted Simple WordCount: $JOB_ID_1"
+
+        # Submit inefficient job
+        JOB_ID_2=$(gcloud dataproc jobs submit pyspark \
+          gs://${{ inputs.gcs_bucket }}/spark-jobs/inefficient_job.py \
+          --cluster=${{ inputs.cluster_name }} \
+          --region=${{ inputs.region }} \
+          --project=${{ inputs.project_id }} \
+          --format="value(reference.jobId)")
+        echo "✓ Submitted Inefficient Job: $JOB_ID_2"
+
+        # Submit memory intensive job
+        JOB_ID_3=$(gcloud dataproc jobs submit pyspark \
+          gs://${{ inputs.gcs_bucket }}/spark-jobs/memory_intensive_job.py \
+          --cluster=${{ inputs.cluster_name }} \
+          --region=${{ inputs.region }} \
+          --project=${{ inputs.project_id }} \
+          --format="value(reference.jobId)")
+        echo "✓ Submitted Memory Intensive Job: $JOB_ID_3"
+
+        echo "JOB_IDS=$JOB_ID_1,$JOB_ID_2,$JOB_ID_3" >> $GITHUB_ENV
+
+    - name: Wait for Jobs to Complete
+      if: ${{ inputs.submit_jobs == 'true' }}
+      run: |
+        echo "Waiting for Spark jobs to complete..."
+        IFS=',' read -ra JOBS <<< "$JOB_IDS"
+
+        for job_id in "${JOBS[@]}"; do
+          echo "Waiting for job: $job_id"
+
+          while true; do
+            STATUS=$(gcloud dataproc jobs describe "$job_id" \
+              --region=${{ inputs.region }} \
+              --project=${{ inputs.project_id }} \
+              --format="value(status.state)")
+
+            echo "  Status: $STATUS"
+
+            if [[ "$STATUS" == "DONE" ]]; then
+              echo "  ✓ Job completed successfully"
+              break
+            elif [[ "$STATUS" == "ERROR" || "$STATUS" == "CANCELLED" ]]; then
+              echo "  ⚠ Job $STATUS (continuing anyway)"
+              break
+            fi
+
+            sleep 10
+          done
+        done
+
+        echo "✓ All jobs finished"
+
     - name: Test Dataproc Collector (List Clusters)
-      if: ${{ !inputs.cluster_name }}
+      if: ${{ !inputs.submit_jobs || inputs.submit_jobs == 'false' }}
       run: |
         echo "Testing Dataproc collector with cluster discovery..."
         python -c "
@@ -107,7 +186,6 @@ jobs:
         "
 
     - name: Test Dataproc Collector (Specific Cluster)
-      if: ${{ inputs.cluster_name }}
       run: |
         echo "Testing Dataproc collector with cluster: ${{ inputs.cluster_name }}"
         python -c "
@@ -137,6 +215,8 @@ jobs:
                 print(f'  Executors: {job.get(\"num_executors\")}')
                 print(f'  Memory: {job.get(\"executor_memory_mb\")}MB')
                 print(f'  Duration: {job.get(\"duration_ms\")}ms')
+        else:
+            print('⚠ No applications found')
         "
 
     - name: List Cluster Details
