@@ -222,14 +222,14 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Database Statistics" >> $GITHUB_STEP_SUMMARY
           python -c "
-          from spark_optimizer.storage.database import Database
-          from spark_optimizer.storage.models import SparkApplication
+        from spark_optimizer.storage.database import Database
+        from spark_optimizer.storage.models import SparkApplication
 
-          db = Database('sqlite:///spark_optimizer.db')
-          with db.get_session() as session:
-              app_count = session.query(SparkApplication).count()
-              print(f'- Applications collected: {app_count}')
-          " >> $GITHUB_STEP_SUMMARY
+        db = Database('sqlite:///spark_optimizer.db')
+        with db.get_session() as session:
+            app_count = session.query(SparkApplication).count()
+            print(f'- Applications collected: {app_count}')
+        " >> $GITHUB_STEP_SUMMARY
         fi
 
     - name: Upload database artifact
