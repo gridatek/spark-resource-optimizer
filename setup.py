@@ -1,58 +1,8 @@
-from setuptools import setup, find_packages
+"""Minimal setup.py for backward compatibility.
 
-with open("README.md", "r", encoding="utf-8") as fh:
-    long_description = fh.read()
+Modern configuration is in pyproject.toml.
+"""
 
-with open("requirements.txt", "r", encoding="utf-8") as fh:
-    requirements = [line.strip() for line in fh if line.strip() and not line.startswith("#")]
+from setuptools import setup
 
-setup(
-    name="spark-optimizer",
-    version="0.1.0",
-    author="Gridatek",
-    author_email="hello@gridatek.com",
-    description="An open-source tool that analyzes historical Spark job runs to recommend optimal resource configurations",
-    long_description=long_description,
-    long_description_content_type="text/markdown",
-    url="https://github.com/gridatek/spark-optimizer",
-    package_dir={"": "src"},
-    packages=find_packages(where="src"),
-    classifiers=[
-        "Development Status :: 3 - Alpha",
-        "Intended Audience :: Developers",
-        "Topic :: Software Development :: Libraries :: Python Modules",
-        "License :: OSI Approved :: MIT License",
-        "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.8",
-        "Programming Language :: Python :: 3.9",
-        "Programming Language :: Python :: 3.10",
-        "Programming Language :: Python :: 3.11",
-    ],
-    python_requires=">=3.8",
-    install_requires=requirements,
-    extras_require={
-        "dev": [
-            "pytest>=7.0.0",
-            "pytest-cov>=4.0.0",
-            "black>=22.0.0",
-            "flake8>=5.0.0",
-            "mypy>=0.990",
-            "pre-commit>=2.20.0",
-        ],
-        "aws": [
-            "boto3>=1.26.0",
-        ],
-        "databricks": [
-            "requests>=2.28.0",
-        ],
-        "gcp": [
-            "google-cloud-dataproc>=5.0.0",
-            "google-cloud-monitoring>=2.11.0",
-        ],
-    },
-    entry_points={
-        "console_scripts": [
-            "spark-optimizer=spark_optimizer.cli.commands:main",
-        ],
-    },
-)
+setup()

@@ -38,7 +38,6 @@ pip install -e .
 
 # Optional: Install with cloud provider support
 pip install -e ".[aws]"          # For AWS EMR integration
-pip install -e ".[databricks]"   # For Databricks integration
 pip install -e ".[gcp]"          # For GCP Dataproc integration
 
 # Setup database
@@ -55,15 +54,14 @@ spark-optimizer collect --event-log-dir /path/to/spark/logs
 spark-optimizer collect-from-history-server --history-server-url http://localhost:18080
 
 # Collect data from AWS EMR
-pip install spark-optimizer[aws]
+pip install -e ".[aws]"
 spark-optimizer collect-from-emr --region us-west-2
 
-# Collect data from Databricks
-pip install spark-optimizer[databricks]
+# Collect data from Databricks (uses core dependencies)
 spark-optimizer collect-from-databricks --workspace-url https://dbc-xxx.cloud.databricks.com
 
 # Collect data from GCP Dataproc
-pip install spark-optimizer[gcp]
+pip install -e ".[gcp]"
 spark-optimizer collect-from-dataproc --project my-project --region us-central1
 
 # Get recommendations for a new job

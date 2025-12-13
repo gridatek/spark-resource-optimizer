@@ -26,12 +26,16 @@ class TestDataprocCollector:
 
     def test_initialization_basic(self):
         """Test basic Dataproc collector initialization."""
-        with patch(
-            "spark_optimizer.collectors.dataproc_collector.dataproc_v1.ClusterControllerClient"
-        ), patch(
-            "spark_optimizer.collectors.dataproc_collector.dataproc_v1.JobControllerClient"
-        ), patch(
-            "spark_optimizer.collectors.dataproc_collector.monitoring_v3.MetricServiceClient"
+        with (
+            patch(
+                "spark_optimizer.collectors.dataproc_collector.dataproc_v1.ClusterControllerClient"
+            ),
+            patch(
+                "spark_optimizer.collectors.dataproc_collector.dataproc_v1.JobControllerClient"
+            ),
+            patch(
+                "spark_optimizer.collectors.dataproc_collector.monitoring_v3.MetricServiceClient"
+            ),
         ):
             collector = DataprocCollector(
                 project_id="test-project", region="us-central1"
@@ -55,12 +59,16 @@ class TestDataprocCollector:
             "preemptible_discount": 0.7,
         }
 
-        with patch(
-            "spark_optimizer.collectors.dataproc_collector.dataproc_v1.ClusterControllerClient"
-        ), patch(
-            "spark_optimizer.collectors.dataproc_collector.dataproc_v1.JobControllerClient"
-        ), patch(
-            "spark_optimizer.collectors.dataproc_collector.monitoring_v3.MetricServiceClient"
+        with (
+            patch(
+                "spark_optimizer.collectors.dataproc_collector.dataproc_v1.ClusterControllerClient"
+            ),
+            patch(
+                "spark_optimizer.collectors.dataproc_collector.dataproc_v1.JobControllerClient"
+            ),
+            patch(
+                "spark_optimizer.collectors.dataproc_collector.monitoring_v3.MetricServiceClient"
+            ),
         ):
             collector = DataprocCollector(
                 project_id="test-project",
