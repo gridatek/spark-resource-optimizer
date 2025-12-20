@@ -13,7 +13,10 @@ This plan outlines the steps to update all project dependencies to their latest 
 | Frontend Dependencies | `web-ui-dashboard/package.json` | High |
 | Docker Base Images | `Dockerfile`, `docker-compose.yml` | High |
 | CI/CD Actions | `.github/workflows/*.yml` | Medium |
-| Helm Chart Dependencies | `helm/spark-optimizer/Chart.yaml` | Low |
+| Helm Chart Dependencies | `helm/spark-optimizer/Chart.yaml`, `values.yaml` | **Critical** |
+
+> **Note:** Bitnami charts are being deprecated (August 2025) and require paid subscription ($50K+/year).
+> Phase 5 covers migration to free, open-source alternatives (CloudNativePG, OT-ContainerKit Redis).
 
 ---
 
@@ -161,19 +164,200 @@ The frontend is already on Angular 21 which is very recent. Updates needed:
 
 ---
 
-## Phase 5: Helm Chart Dependencies
+## Phase 5: Helm Chart Dependencies - Migrate from Bitnami
 
-### 5.1 Bitnami Charts
+### 5.1 Why Migrate from Bitnami?
 
-| Chart | Current | Latest | Notes |
-|-------|---------|--------|-------|
-| postgresql | 13.x.x | 16.x.x | Major update available |
-| redis | 18.x.x | 20.x.x | Major update available |
+Bitnami (now owned by Broadcom) is deprecating free container images as of August 28, 2025.
+The new "Bitnami Secure" subscription costs $50,000-$72,000/year. **We must migrate to free,
+open-source alternatives.**
 
-**Recommended Actions:**
-1. Update Helm chart dependencies
-2. Review breaking changes in values.yaml structure
-3. Test with `helm dependency update`
+### 5.2 PostgreSQL Alternatives
+
+| Solution | Type | Repository | Recommendation |
+|----------|------|------------|----------------|
+| **CloudNativePG** | Operator | `https://cloudnative-pg.github.io/charts` | ⭐ Recommended for production |
+| Crunchy PGO | Operator | `https://artifacthub.io/packages/olm/community-operators/postgresql` | Enterprise-ready |
+| Zalando Postgres Operator | Operator | `https://opensource.zalando.com/postgres-operator/` | Feature-rich, multi-DB per cluster |
+| Percona PG Operator | Operator | `https://artifacthub.io/packages/olm/community-operators/percona-postgresql-operator` | Percona flavor |
+
+**Recommended: CloudNativePG**
+- Kubernetes-native PostgreSQL operator
+- Simple architecture (1 DB per cluster)
+- Active community, regular updates
+- Built-in backup/restore, replication, failover
+- Chart: `cloudnative-pg/cloudnative-pg` (operator) + `cloudnative-pg/cluster` (database)
+
+### 5.3 Redis Alternatives
+
+| Solution | Type | Repository | Recommendation |
+|----------|------|------------|----------------|
+| **OT-ContainerKit Redis Operator** | Operator | `https://ot-container-kit.github.io/helm-charts/` | ⭐ Recommended |
+| Spotahome Redis Operator | Operator | `https://artifacthub.io/packages/helm/redis-operator/redis-operator` | Popular historical alternative |
+| DandyDeveloper redis-ha | Chart | `https://dandydeveloper.github.io/charts/` | Mature community chart |
+
+**Recommended: OT-ContainerKit Redis Operator**
+- Supports standalone, cluster, and sentinel modes
+- Data migration support
+- Active maintenance
+- Charts: `redis-operator` (operator) + `redis` / `redis-cluster` (instances)
+
+### 5.4 Migration Plan
+
+#### Current Chart.yaml Dependencies (to be removed):
+```yaml
+dependencies:
+  - name: postgresql
+    version: "13.x.x"
+    repository: https://charts.bitnami.com/bitnami  # ❌ Remove
+    condition: postgresql.enabled
+  - name: redis
+    version: "18.x.x"
+    repository: https://charts.bitnami.com/bitnami  # ❌ Remove
+    condition: redis.enabled
+```
+
+#### New Chart.yaml Dependencies:
+```yaml
+dependencies:
+  - name: cloudnative-pg
+    version: "0.23.x"
+    repository: https://cloudnative-pg.github.io/charts
+    condition: postgresql.enabled
+  - name: redis-operator
+    version: "0.18.x"
+    repository: https://ot-container-kit.github.io/helm-charts/
+    condition: redis.enabled
+```
+
+### 5.5 Values.yaml Migration
+
+#### PostgreSQL - Bitnami to CloudNativePG
+
+**Current (Bitnami):**
+```yaml
+postgresql:
+  enabled: true
+  auth:
+    username: spark_optimizer
+    password: ""
+    database: spark_optimizer
+  primary:
+    persistence:
+      enabled: true
+      size: 10Gi
+```
+
+**New (CloudNativePG):**
+```yaml
+postgresql:
+  enabled: true
+  cluster:
+    name: spark-optimizer-db
+    instances: 2  # HA setup
+    storage:
+      size: 10Gi
+    postgresql:
+      parameters:
+        max_connections: "200"
+    bootstrap:
+      initdb:
+        database: spark_optimizer
+        owner: spark_optimizer
+        secret:
+          name: spark-optimizer-db-credentials
+```
+
+#### Redis - Bitnami to OT-ContainerKit
+
+**Current (Bitnami):**
+```yaml
+redis:
+  enabled: false
+  auth:
+    enabled: true
+    password: ""
+  master:
+    persistence:
+      enabled: true
+      size: 1Gi
+```
+
+**New (OT-ContainerKit):**
+```yaml
+redis:
+  enabled: false
+  mode: standalone  # or "cluster" or "sentinel"
+  redisStandalone:
+    storage:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 1Gi
+  kubernetesConfig:
+    image: redis:7-alpine
+    imagePullPolicy: IfNotPresent
+
+# Note: Redis Operator requires deploying the operator first,
+# then creating Redis/RedisCluster CRs
+```
+
+### 5.6 Implementation Steps for Helm Migration
+
+1. **Deploy Operators First** (cluster-wide, one-time setup):
+   ```bash
+   # CloudNativePG Operator
+   helm repo add cnpg https://cloudnative-pg.github.io/charts
+   helm install cnpg cnpg/cloudnative-pg -n cnpg-system --create-namespace
+
+   # Redis Operator (if needed)
+   helm repo add ot-helm https://ot-container-kit.github.io/helm-charts/
+   helm install redis-operator ot-helm/redis-operator -n redis-operator --create-namespace
+   ```
+
+2. **Update Application Chart**:
+   - Remove Bitnami dependencies from `Chart.yaml`
+   - Add CRD templates for PostgreSQL Cluster and Redis
+   - Update `values.yaml` with new structure
+   - Update application database connection logic
+
+3. **Data Migration** (if upgrading existing deployment):
+   - Backup existing PostgreSQL data: `pg_dump`
+   - Deploy new CloudNativePG cluster
+   - Restore data: `pg_restore`
+   - Update connection strings
+   - Verify application connectivity
+
+4. **Testing**:
+   - Deploy to staging environment
+   - Verify database connectivity
+   - Test failover scenarios
+   - Validate backup/restore procedures
+
+### 5.7 Alternative: External Database
+
+For production, consider using **managed databases** instead of in-cluster:
+- AWS RDS PostgreSQL / ElastiCache Redis
+- GCP Cloud SQL / Memorystore
+- Azure Database for PostgreSQL / Azure Cache for Redis
+
+This simplifies Kubernetes deployment and provides enterprise features (backups, HA, scaling).
+
+To use external databases, set in values.yaml:
+```yaml
+database:
+  external: true
+  host: "your-rds-endpoint.amazonaws.com"
+  port: 5432
+  name: spark_optimizer
+  username: spark_optimizer
+  password: ""  # Use secret reference
+
+postgresql:
+  enabled: false  # Disable in-cluster PostgreSQL
+```
 
 ---
 
@@ -226,12 +410,16 @@ git checkout -b feature/dependency-updates
 
 | Update | Risk Level | Mitigation |
 |--------|------------|------------|
+| **Bitnami → CloudNativePG/Redis Operator** | **Critical** | Test in staging, backup data, phased rollout |
 | SQLAlchemy 1.4 → 2.0 | **High** | Gradual migration, use compatibility mode |
 | Pydantic 1.x → 2.x | **High** | Use `pydantic.v1` compatibility imports first |
 | Pandas 1.x → 2.x | **Medium** | Review deprecated API usage |
 | Flask 2.x → 3.x | **Medium** | Test all endpoints |
 | Python 3.11 → 3.13 | **Low** | Good backward compatibility |
 | PostgreSQL 15 → 17 | **Low** | Mostly compatible |
+
+> **Critical Note:** The Bitnami migration has a hard deadline of August 28, 2025. After this date,
+> Bitnami images will no longer receive updates and may be removed from public registries.
 
 ---
 
@@ -267,7 +455,7 @@ If issues are discovered after deployment:
 | Frontend | Low | Already up-to-date |
 | Docker | Medium | Image updates and testing |
 | CI/CD | Low | Version bumps |
-| Helm | Medium | Chart dependency updates |
+| **Helm (Bitnami Migration)** | **High** | Operator deployment, CRD templates, values restructure, data migration |
 
 ---
 
@@ -276,4 +464,21 @@ If issues are discovered after deployment:
 1. Review this plan and prioritize phases
 2. Decide on Python version target (3.12 or 3.13)
 3. Create tracking issues for each phase
-4. Begin with Phase 1 (Python) as it has the most impact
+4. **Prioritize Helm/Bitnami migration** due to August 2025 deadline
+5. Begin with Phase 1 (Python) as it has the most impact
+
+---
+
+## Sources & References
+
+### Bitnami Migration Resources
+- [helm-unbitnami: Curated alternatives to Bitnami Helm charts](https://github.com/TartanLeGrand/helm-unbitnami)
+- [Broadcom Ends Free Bitnami Images](https://thenewstack.io/broadcom-ends-free-bitnami-images-forcing-users-to-find-alternatives/)
+- [Bitnami Deprecation: Migration Steps and Alternatives](https://northflank.com/blog/bitnami-deprecates-free-images-migration-steps-and-alternatives)
+- [Bitnami Helm Charts Deprecated: Migrate to Secure Alternative](https://www.chainguard.dev/supply-chain-security-101/a-practical-guide-to-migrating-helm-charts-from-bitnami)
+
+### Alternative Chart Repositories
+- [CloudNativePG](https://cloudnative-pg.io/) - Kubernetes PostgreSQL Operator
+- [OT-ContainerKit Redis Operator](https://ot-container-kit.github.io/redis-operator/)
+- [Spotahome Redis Operator](https://github.com/spotahome/redis-operator)
+- [DandyDeveloper redis-ha Chart](https://github.com/DandyDeveloper/charts)
